@@ -39,7 +39,7 @@ const char* CBacnetClientController::init() {
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
   m_nSendRingbufferStartIndex = m_nSendRingbufferEndIndex = 0; 
   // open socket
-  mBacnetSocket = openBacnetIPSocket();
+  //mBacnetSocket = openBacnetIPSocket();
   return 0;
 }
 
@@ -80,4 +80,16 @@ void CBacnetClientController::runLoop() {
   while(isAlive()) {
     
   }
+}
+
+ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceController::HandleDescriptor *handleDescriptor) {
+  DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Creating handle instance\n");
+  HandleDescriptor *desc = static_cast<CBacnetClientController::HandleDescriptor *>(handleDescriptor);
+  return new CBacnetReadPropertyHandle(this, handleDescriptor->mDirection, CIEC_ANY::e_WORD, mDeviceExecution);
+ }
+
+
+void CBacnetClientController::addSlaveHandle(int index, forte::core::io::IOHandle* handle){
+   DEVLOG_DEBUG("[CBacnetClientController] addSlaveHandle(): Registering handle to controller\n");
+   
 }

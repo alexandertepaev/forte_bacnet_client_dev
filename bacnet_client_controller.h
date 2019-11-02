@@ -13,14 +13,19 @@
 #include <net/if.h>
 #include <unistd.h>
 
+#include "bacnet_service_config_fb.h"
+#include "BACnetReadProperty.h"
+
+#include "bacnet_readproperty_handle.h"
 
 class CBacnetClientController: public forte::core::io::IODeviceMultiController {
+  friend class CBacnetReadPropertyConfigFB;
   public:
     CBacnetClientController(CDeviceExecution& paDeviceExecution, int id);
     ~CBacnetClientController();
 
     void setConfig(Config* paConfig);
-    void addSlaveHandle(int index, forte::core::io::IOHandle* handle) {}; //TODO
+    void addSlaveHandle(int index, forte::core::io::IOHandle* handle);
     void dropSlaveHandles(int index) {}; //TODO;
   
 
@@ -33,16 +38,24 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     };
     
 
+    class HandleDescriptor : public forte::core::io::IODeviceMultiController::HandleDescriptor {
+      public:
+        int mServiceType;
+
+        HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paSlaveIndex, int paServiceType) : forte::core::io::IODeviceMultiController::HandleDescriptor(paId, paDirection, paSlaveIndex), mServiceType(paServiceType){
+
+        }
+    };
+
     // functions like - service handles (eg. ReadProperty - has to be supported - iterate through the object list and read the property)
     //                - sending functions (sending functions have to be implemented in CBacnetServiceHandle)
     //
 
-    
   protected:
     const char* init(); // Initialize the device object (call it's init function)
     void deInit() {}; //TODO
     void runLoop();
-    forte::core::io::IOHandle* initHandle(IODeviceController::HandleDescriptor *handleDescriptor) {}; //TODO
+    forte::core::io::IOHandle* initHandle(IODeviceController::HandleDescriptor *handleDescriptor);
     bool checkSlaveType(int index, int type) {}; //TODO;
   
   private:

@@ -17,9 +17,18 @@
 #include <forte_uint.h>
 #include <forte_wstring.h>
 #include "BACnetAdapter.h"
+#include "bacnet_service_config_fb.h"
+#include "bacnet_client_controller.h"
 
-class FORTE_BACnetReadProperty: public CFunctionBlock{
-  DECLARE_FIRMWARE_FB(FORTE_BACnetReadProperty)
+
+#include "../../forte-incubation_1.11.0/src/core/io/configFB/io_master_multi.h"
+#include "../../forte-incubation_1.11.0/src/core/io/device/io_controller_multi.h"
+#include"../../forte-incubation_1.11.0/src/core/io/configFB/io_master_multi.h"
+#include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
+#include "../../forte-incubation_1.11.0/src/core/io/mapper/io_handle.h"
+
+class CBacnetReadPropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
+  DECLARE_FIRMWARE_FB(CBacnetReadPropertyConfigFB)
 
 private:
   static const CStringDictionary::TStringId scm_anDataInputNames[];
@@ -83,11 +92,23 @@ private:
 
   void executeEvent(int pa_nEIID);
 
-public:
-  FUNCTION_BLOCK_CTOR(FORTE_BACnetReadProperty){
-  };
+  const char* init();
 
-  virtual ~FORTE_BACnetReadProperty(){};
+  int m_nIndex;
+
+  static const char* const scmError;
+  static const char* const scmOK;
+
+public:
+
+  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetReadPropertyConfigFB, forte::core::io::IOConfigFBBase){
+
+  }
+
+  virtual ~CBacnetReadPropertyConfigFB(){};
+
+
+
 
 };
 

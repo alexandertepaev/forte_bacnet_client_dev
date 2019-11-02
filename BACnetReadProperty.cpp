@@ -14,35 +14,73 @@
 #include "BACnetReadProperty_gen.cpp"
 #endif
 
-DEFINE_FIRMWARE_FB(FORTE_BACnetReadProperty, g_nStringIdBACnetReadProperty)
+DEFINE_FIRMWARE_FB(CBacnetReadPropertyConfigFB, g_nStringIdBACnetReadProperty)
 
-const CStringDictionary::TStringId FORTE_BACnetReadProperty::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdObserverName, g_nStringIdDeviceID, g_nStringIdObjectType, g_nStringIdObjectID, g_nStringIdObjectProperty, g_nStringIdArrayIndex};
+const char* const CBacnetReadPropertyConfigFB::scmError = "Failed";
+const char* const CBacnetReadPropertyConfigFB::scmOK = "Initialized";
 
-const CStringDictionary::TStringId FORTE_BACnetReadProperty::scm_anDataInputTypeIds[] = {g_nStringIdBOOL, g_nStringIdWSTRING, g_nStringIdUINT, g_nStringIdWSTRING, g_nStringIdUINT, g_nStringIdWSTRING, g_nStringIdUINT};
+const CStringDictionary::TStringId CBacnetReadPropertyConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdObserverName, g_nStringIdDeviceID, g_nStringIdObjectType, g_nStringIdObjectID, g_nStringIdObjectProperty, g_nStringIdArrayIndex};
 
-const CStringDictionary::TStringId FORTE_BACnetReadProperty::scm_anDataOutputNames[] = {g_nStringIdQO, g_nStringIdSTATUS};
+const CStringDictionary::TStringId CBacnetReadPropertyConfigFB::scm_anDataInputTypeIds[] = {g_nStringIdBOOL, g_nStringIdWSTRING, g_nStringIdUINT, g_nStringIdWSTRING, g_nStringIdUINT, g_nStringIdWSTRING, g_nStringIdUINT};
 
-const CStringDictionary::TStringId FORTE_BACnetReadProperty::scm_anDataOutputTypeIds[] = {g_nStringIdBOOL, g_nStringIdWSTRING};
+const CStringDictionary::TStringId CBacnetReadPropertyConfigFB::scm_anDataOutputNames[] = {g_nStringIdQO, g_nStringIdSTATUS};
 
-const TDataIOID FORTE_BACnetReadProperty::scm_anEOWith[] = {0, 1, 255};
-const TForteInt16 FORTE_BACnetReadProperty::scm_anEOWithIndexes[] = {0, -1};
-const CStringDictionary::TStringId FORTE_BACnetReadProperty::scm_anEventOutputNames[] = {g_nStringIdIND};
+const CStringDictionary::TStringId CBacnetReadPropertyConfigFB::scm_anDataOutputTypeIds[] = {g_nStringIdBOOL, g_nStringIdWSTRING};
 
-const SAdapterInstanceDef FORTE_BACnetReadProperty::scm_astAdapterInstances[] = {
+const TDataIOID CBacnetReadPropertyConfigFB::scm_anEOWith[] = {0, 1, 255};
+const TForteInt16 CBacnetReadPropertyConfigFB::scm_anEOWithIndexes[] = {0, -1};
+const CStringDictionary::TStringId CBacnetReadPropertyConfigFB::scm_anEventOutputNames[] = {g_nStringIdIND};
+
+const SAdapterInstanceDef CBacnetReadPropertyConfigFB::scm_astAdapterInstances[] = {
 {g_nStringIdBACnetAdapter, g_nStringIdBACnetAdapterOut, true },
 {g_nStringIdBACnetAdapter, g_nStringIdBACnetAdapterIn, false }};
 
-const SFBInterfaceSpec FORTE_BACnetReadProperty::scm_stFBInterfaceSpec = {
+const SFBInterfaceSpec CBacnetReadPropertyConfigFB::scm_stFBInterfaceSpec = {
   0,  0,  0,  0,
   1,  scm_anEventOutputNames,  scm_anEOWith, scm_anEOWithIndexes,  7,  scm_anDataInputNames, scm_anDataInputTypeIds,
   2,  scm_anDataOutputNames, scm_anDataOutputTypeIds,
   2,scm_astAdapterInstances};
 
 
-void FORTE_BACnetReadProperty::executeEvent(int pa_nEIID){
+void CBacnetReadPropertyConfigFB::executeEvent(int pa_nEIID){
   if(BACnetAdapterIn().INIT() == pa_nEIID) {
-    DEVLOG_DEBUG("[BACnetReadPropertyConfigFB] \n");
+    DEVLOG_DEBUG("[BACnetReadPropertyConfigFB] init event\n");
+    const char* const error = init();
+    QO() = error == 0;
+    STATUS() = scmOK;    
   }
+}
+
+const char* CBacnetReadPropertyConfigFB::init(){
+  m_nIndex = BACnetAdapterIn().Index();
+
+  forte::core::io::IOConfigFBMultiMaster *master = forte::core::io::IOConfigFBMultiMaster::getMasterById(BACnetAdapterIn().MasterId());
+  CBacnetClientController *clictr = static_cast<CBacnetClientController *>(master->getDeviceController());
+
+  // forte::core::io::IODeviceMultiController::HandleDescriptor *desc = new forte::core::io::IODeviceMultiController::HandleDescriptor(ObserverName(),forte::core::io::IOMapper::In, m_nIndex); // last parameter - slaveIndex
+  // clictr->addHandle(desc);
+  // //initHandle(desc);
+  // return 0;
+
+ 
+  
+  
+  // get client controller
+  // CBacnetClientController *clictr = static_cast<CBacnetClientController *>(forte::core::io::IOConfigFBMultiMaster::getMasterById(BACnetAdapterIn().MasterId())->getDeviceController());
+  // // create handle descriptor(Observer Name, Direction, Index in daisy chain)
+  // m_nIndex = BACnetAdapterIn().Index();
+
+
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, 123);
+  //DEVLOG_DEBUG("KEKEKE 0.1\n");
+  clictr->addHandle(desc);
+  //clictr->addHandle(static_cast<forte::core::io::IODeviceMultiController::HandleDescriptor *>(desc));
+
+  
+  // tell client controller to register handle
+  
+
+  return 0;
 }
 
 

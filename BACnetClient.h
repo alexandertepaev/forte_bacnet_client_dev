@@ -85,6 +85,10 @@ private:
 
   static int sm_nControllerInstances;
 
+  int m_nId;
+
+  void onStartup();
+
 public:
  
   FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetClientConfigFB, forte::core::io::IOConfigFBMultiMaster){

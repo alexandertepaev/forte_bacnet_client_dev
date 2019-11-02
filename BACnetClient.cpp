@@ -45,22 +45,21 @@ const SFBInterfaceSpec CBacnetClientConfigFB::scm_stFBInterfaceSpec = {
 int CBacnetClientConfigFB::sm_nControllerInstances = 0;
 
 void CBacnetClientConfigFB::executeEvent(int pa_nEIID){
-  switch(pa_nEIID){
-    case scm_nEventINITID:
-      DEVLOG_DEBUG("\n\n\n");
-      DEVLOG_DEBUG("[CBacnetClientConfigFB] init: Bacnet Stack Version: %s\n", BACNET_VERSION_TEXT);
-      //IOConfigFBController::executeEvent(pa_nEIID);
-      
-      //TODO DEVELOPMENT REASONS
-      sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, scm_nEventINITID);
-      break;
+
+  DEVLOG_DEBUG("\n\n\n");
+  DEVLOG_DEBUG("[CBacnetClientConfigFB] init: Bacnet Stack Version: %s\n", BACNET_VERSION_TEXT);
+  IOConfigFBController::executeEvent(pa_nEIID);
+
+  if (BACnetAdapterOut().INITO() == pa_nEIID) {
+    IOConfigFBController::onStartup();
   }
+    
 }
 
 forte::core::io::IODeviceController* CBacnetClientConfigFB::createDeviceController(CDeviceExecution& paDeviceExecution){
+  m_nId = sm_nControllerInstances++;
   DEVLOG_DEBUG("[CBacnetClientConfigFB] createDeviceController(): Creating client controller\n");
-  return new CBacnetClientController(paDeviceExecution, sm_nControllerInstances++);
-  // id = instancesIncrement++;
+  return new CBacnetClientController(paDeviceExecution, m_nId);
   // return new BacnetClientController(paDeviceExecution);
   //return 0;
 }
@@ -75,4 +74,16 @@ void CBacnetClientConfigFB::setConfig(){
   getDeviceController()->setConfig(&config);
 }
 
+
+void CBacnetClientConfigFB::onStartup(){
+  DEVLOG_DEBUG("[CBacnetClientConfigFB] onStartup()\n");
+  //check if we have adapter peers 
+  if (BACnetAdapterOut().getPeer() == 0) {
+    return IOConfigFBController::onStartup();
+  }
+  // pass BACnetAdatper.INIT event
+  BACnetAdapterOut().MasterId() = m_nId;
+  BusAdapterOut().Index() = 1;
+  sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, BACnetAdapter::scm_nEventINITID);
+}
 
