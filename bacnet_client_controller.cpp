@@ -83,9 +83,18 @@ void CBacnetClientController::runLoop() {
 }
 
  forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceController::HandleDescriptor *handleDescriptor) {
-  DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Creating handle instance\n");
+
   HandleDescriptor *desc = static_cast<CBacnetClientController::HandleDescriptor *>(handleDescriptor);
-  return new CBacnetReadPropertyHandle(this, handleDescriptor->mDirection, CIEC_ANY::e_WORD, mDeviceExecution);
+  switch (desc->mServiceType)
+  {
+    case SERVICE_CONFIRMED_READ_PROPERTY:
+      return new CBacnetReadPropertyHandle(this, desc->mDirection, CIEC_ANY::e_WORD, mDeviceExecution, desc->mServiceConfigFB); // Question: is it better to compose a pdu one single time here and store its value or is it better to compose it every time we want to send the request
+      break;
+    default:
+      DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Unknown/Unsupported BACnet Service\n");
+      return 0;
+      break;
+  }
  }
 
 

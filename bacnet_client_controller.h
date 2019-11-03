@@ -20,6 +20,7 @@
 
 class CBacnetClientController: public forte::core::io::IODeviceMultiController {
   friend class CBacnetReadPropertyConfigFB;
+  friend class CBacnetServiceHandle;
   public:
     CBacnetClientController(CDeviceExecution& paDeviceExecution, int id);
     ~CBacnetClientController();
@@ -40,10 +41,10 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
 
     class HandleDescriptor : public forte::core::io::IODeviceMultiController::HandleDescriptor {
       public:
+        CBacnetServiceConfigFB *mServiceConfigFB;
         int mServiceType;
 
-        HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paSlaveIndex, int paServiceType) : forte::core::io::IODeviceMultiController::HandleDescriptor(paId, paDirection, paSlaveIndex), mServiceType(paServiceType){
-
+        HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paSlaveIndex, int paServiceType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceMultiController::HandleDescriptor(paId, paDirection, paSlaveIndex), mServiceType(paServiceType), mServiceConfigFB(paServiceConfigFB) {
         }
     };
 
@@ -75,7 +76,7 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     typedef CSinglyLinkedList<int *> TBacnetServiceHandleList;
     TBacnetServiceHandleList *pmServiceList;
 
-    //ringbuffer of outgoint messages (TODO change typedef from int on service handles)
+    //ringbuffer of outgoint messages (TODO change typedef from int to service handles)
     typedef int *TBacnetServiceHandlePtr;
     static const uint8_t cm_nSendRingbufferSize = 64;
     TBacnetServiceHandlePtr m_aSendRingbuffer[cm_nSendRingbufferSize];

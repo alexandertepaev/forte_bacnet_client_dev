@@ -51,37 +51,44 @@ void CBacnetReadPropertyConfigFB::executeEvent(int pa_nEIID){
   }
 }
 
-const char* CBacnetReadPropertyConfigFB::init(){
-  m_nIndex = BACnetAdapterIn().Index();
 
+/*
+
+*** TODO: move this somewhere?
+
+*/
+uint32_t getObjectType(CIEC_WSTRING paObjectType){
+  if(paObjectType == "ANALOG_INPUT"){
+    return OBJECT_ANALOG_INPUT;
+  }
+}
+
+uint32_t getObjectProperty(CIEC_WSTRING paObjectProperty){
+  if(paObjectProperty == "PRESENT_VALUE"){
+    return PROP_PRESENT_VALUE;
+  }
+}
+
+const char* CBacnetReadPropertyConfigFB::init(){
+
+  m_nIndex = BACnetAdapterIn().Index();
   forte::core::io::IOConfigFBMultiMaster *master = forte::core::io::IOConfigFBMultiMaster::getMasterById(BACnetAdapterIn().MasterId());
   CBacnetClientController *clictr = static_cast<CBacnetClientController *>(master->getDeviceController());
 
-  // forte::core::io::IODeviceMultiController::HandleDescriptor *desc = new forte::core::io::IODeviceMultiController::HandleDescriptor(ObserverName(),forte::core::io::IOMapper::In, m_nIndex); // last parameter - slaveIndex
-  // clictr->addHandle(desc);
-  // //initHandle(desc);
-  // return 0;
+  m_stServiceConfig.mDeviceId = DeviceID();
+  m_stServiceConfig.mObjectType = getObjectType(ObjectType());
+  m_stServiceConfig.mObjectId = ObjectID();
+  m_stServiceConfig.mObjectProperty = getObjectProperty(ObjectProperty());
+  m_stServiceConfig.mArrayIndex = 0;
+  m_stServiceConfig.dummy_value = 567;
 
- 
-  
-  
-  // get client controller
-  // CBacnetClientController *clictr = static_cast<CBacnetClientController *>(forte::core::io::IOConfigFBMultiMaster::getMasterById(BACnetAdapterIn().MasterId())->getDeviceController());
-  // // create handle descriptor(Observer Name, Direction, Index in daisy chain)
-  // m_nIndex = BACnetAdapterIn().Index();
-
-
-  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, 123);
-  //DEVLOG_DEBUG("KEKEKE 0.1\n");
-  clictr->addHandle(desc);
-  //clictr->addHandle(static_cast<forte::core::io::IODeviceMultiController::HandleDescriptor *>(desc));
-
-  
-  // tell client controller to register handle
-  
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, SERVICE_CONFIRMED_READ_PROPERTY, this);   
+  clictr->addHandle(desc); 
 
   return 0;
 }
+
+
 
 
 

@@ -101,13 +101,23 @@ private:
 
 public:
 
-  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetReadPropertyConfigFB, forte::core::io::IOConfigFBBase){
 
-  }
+
+  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetReadPropertyConfigFB, forte::core::io::IOConfigFBBase) {
+    m_stServiceConfig.mDeviceId = 0;
+    m_stServiceConfig.mObjectType = 0;
+    m_stServiceConfig.mObjectId = 0;
+    m_stServiceConfig.mObjectProperty = 0;
+    m_stServiceConfig.mArrayIndex = 0;
+  };
 
   virtual ~CBacnetReadPropertyConfigFB(){};
 
+  struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
+    uint32_t dummy_value;
+  };
 
+  ServiceConfig m_stServiceConfig;
 
 
 };

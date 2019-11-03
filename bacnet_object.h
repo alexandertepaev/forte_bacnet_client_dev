@@ -1,3 +1,7 @@
+#ifndef _BACNET_OBJECT_H_
+#define _BACNET_OBJECT_H_
+
+
 #include "include/bacnet.h"
 #include <cstdint>
 
@@ -15,3 +19,5 @@ class CBacnetObject
 
   private:
 };
+
+#endif

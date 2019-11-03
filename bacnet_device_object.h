@@ -1,3 +1,7 @@
+#ifndef _BACNET_DEVICE_OBJECT_H_
+#define _BACNET_DEVICE_OBJECT_H_
+
+
 #include "bacnet_object.h"
 
 class CBacnetDeviceObject : public CBacnetObject
@@ -37,3 +41,5 @@ class CBacnetDeviceObject : public CBacnetObject
 
   private:
 };
+
+#endif
