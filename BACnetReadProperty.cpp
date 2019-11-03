@@ -79,7 +79,7 @@ const char* CBacnetReadPropertyConfigFB::init(){
   m_stServiceConfig.mObjectType = getObjectType(ObjectType());
   m_stServiceConfig.mObjectId = ObjectID();
   m_stServiceConfig.mObjectProperty = getObjectProperty(ObjectProperty());
-  m_stServiceConfig.mArrayIndex = 0;
+  m_stServiceConfig.mArrayIndex = BACNET_ARRAY_ALL;
   m_stServiceConfig.dummy_value = 567;
 
   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, SERVICE_CONFIRMED_READ_PROPERTY, this);   

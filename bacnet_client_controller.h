@@ -52,6 +52,10 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     //                - sending functions (sending functions have to be implemented in CBacnetServiceHandle)
     //
 
+    const int& getSocket() {
+      return mBacnetSocket;
+    }
+
   protected:
     const char* init(); // Initialize the device object (call it's init function)
     void deInit() {}; //TODO
