@@ -106,7 +106,7 @@ void CBacnetClientController::runLoop() {
 
       int pdu_len = handle->encodeServiceReq(pdu, 1, &my_adr, &dst);
 
-      for(int i = 0; i<pdu_len-1; i++){
+      for(int i = 0; i<pdu_len; i++){
         printf("%02x ", pdu[i]);
       }
       printf("\n");

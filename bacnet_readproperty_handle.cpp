@@ -228,36 +228,10 @@ void CBacnetReadPropertyHandle::get(CIEC_ANY &) {
 
 int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *my_address, BACNET_ADDRESS *dest) {
 
-  // BACNET_ADDRESS dst;
-  // dst.mac_len = 6;
-  // dst.mac[0] = 192;
-  // dst.mac[1] = 168;
-  // dst.mac[2] = 1;
-  // dst.mac[3] = 1;
-  // dst.mac[4] = 0xBA;
-  // dst.mac[5] = 0xC0;
-  // dst.net = 0;
-  // dst.len = 0;
-
-  // BACNET_ADDRESS my_adr;
-  // my_adr.mac_len = 6;
-  // my_adr.mac[0] = 192;
-  // my_adr.mac[1] = 168;
-  // my_adr.mac[2] = 1;
-  // my_adr.mac[3] = 0;
-  // my_adr.mac[4] = 0xBA;
-  // my_adr.mac[5] = 0xC0;
-  // my_adr.net = 0;
-  // my_adr.len = 0;
-
-  // BACNET_ADDRESS *dest = &dst;
-  // BACNET_ADDRESS my_address = my_adr;
-
-
   int pdu_len = 4;
   BACNET_NPDU_DATA npdu_data;
   npdu_encode_npdu_data(&npdu_data, true, MESSAGE_PRIORITY_NORMAL);
-  pdu_len += npdu_encode_pdu(&pdu[pdu_len-1], dest, my_address, &npdu_data);
+  pdu_len += npdu_encode_pdu(&pdu[pdu_len], dest, my_address, &npdu_data);
 
   BACNET_READ_PROPERTY_DATA data;
   CBacnetReadPropertyConfigFB::ServiceConfig mServiceConfig = static_cast<CBacnetReadPropertyConfigFB *>(mConfigFB)->m_stServiceConfig;
@@ -266,9 +240,9 @@ int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &inv
   data.object_property = static_cast<BACNET_PROPERTY_ID>(mServiceConfig.mObjectProperty);
   data.array_index = mServiceConfig.mArrayIndex;
 
-   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] encodeServiceReq(): Encoding ReadProperty request with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, dummy_value=%d\n",mServiceConfig.mDeviceId, mServiceConfig.mObjectType, mServiceConfig.mObjectId, mServiceConfig.mObjectProperty, mServiceConfig.mArrayIndex, mServiceConfig.dummy_value);
+   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] encodeServiceReq(): Encoding ReadProperty request with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, dummy_value=%d, invoke_id=%d\n",mServiceConfig.mDeviceId, mServiceConfig.mObjectType, mServiceConfig.mObjectId, mServiceConfig.mObjectProperty, mServiceConfig.mArrayIndex, mServiceConfig.dummy_value, invoke_id);
 
-  pdu_len += rp_encode_apdu(&pdu[pdu_len-1], invoke_id, &data);
+  pdu_len += rp_encode_apdu(&pdu[pdu_len], invoke_id, &data);
 
 
   // struct in_addr address;
