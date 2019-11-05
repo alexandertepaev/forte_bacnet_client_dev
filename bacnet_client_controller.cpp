@@ -1,9 +1,8 @@
 #include "bacnet_client_controller.h"
 
-CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceMultiController(paDeviceExecution), m_nControllerID(id), pmObjectList(0), pmServiceList(0), mBacnetSocket(0)
+CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceMultiController(paDeviceExecution), m_nControllerID(id), m_nSendRingbufferHeadIndex(0), m_nSendRingbufferSize(0), m_nSendRingbufferTailIndex(0), pmObjectList(0), pmServiceList(0), mBacnetSocket(0)
 {
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
-  m_nSendRingbufferStartIndex = m_nSendRingbufferEndIndex = m_aSendRingbuffer[0];
   
   m_stConfig.nPortNumber = 0;
   m_stConfig.nDeviceObjID = 0;
@@ -39,9 +38,9 @@ const char* CBacnetClientController::init() {
   pmServiceList = new TBacnetServiceHandleList();
   // ringbuffer
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
-  m_nSendRingbufferStartIndex = m_nSendRingbufferEndIndex = 0; 
+  m_nSendRingbufferHeadIndex = m_nSendRingbufferTailIndex = m_nSendRingbufferSize = 0; 
   // open socket
-  //mBacnetSocket = openBacnetIPSocket();
+  mBacnetSocket = openBacnetIPSocket();
   return 0;
 }
 
@@ -80,7 +79,52 @@ CBacnetClientController::TSocketDescriptor CBacnetClientController::openBacnetIP
 void CBacnetClientController::runLoop() {
   DEVLOG_DEBUG("[CBacnetClientController] runLoop(): Starting controller loop\n");
   while(isAlive()) {
-    
+    if(m_nSendRingbufferSize != 0) {
+      CBacnetServiceHandle *handle = consumeFromRingbuffer();
+      uint8_t pdu[MAX_MPDU];
+      BACNET_ADDRESS dst;
+      dst.mac_len = 6;
+      dst.mac[0] = 192;
+      dst.mac[1] = 168;
+      dst.mac[2] = 1;
+      dst.mac[3] = 1;
+      dst.mac[4] = 0xBA;
+      dst.mac[5] = 0xC0;
+      dst.net = 0;
+      dst.len = 0;
+
+      BACNET_ADDRESS my_adr;
+      my_adr.mac_len = 6;
+      my_adr.mac[0] = 192;
+      my_adr.mac[1] = 168;
+      my_adr.mac[2] = 1;
+      my_adr.mac[3] = 0;
+      my_adr.mac[4] = 0xBA;
+      my_adr.mac[5] = 0xC0;
+      my_adr.net = 0;
+      my_adr.len = 0;
+
+      int pdu_len = handle->encodeServiceReq(pdu, 1, &my_adr, &dst);
+
+      for(int i = 0; i<pdu_len-1; i++){
+        printf("%02x ", pdu[i]);
+      }
+      printf("\n");
+
+      struct in_addr address;
+      uint16_t port = 0;
+      memcpy(&address.s_addr, &dst.mac[0], 4);
+      memcpy(&port, &dst.mac[4], 2);
+
+      struct sockaddr_in bvlc_dest;
+      bvlc_dest.sin_family = AF_INET;
+      bvlc_dest.sin_addr.s_addr = address.s_addr;
+      bvlc_dest.sin_port = port;
+  
+      sendto(mBacnetSocket, (char *) pdu, pdu_len, 0, (struct sockaddr *) &bvlc_dest, sizeof(struct sockaddr));
+
+
+    }
   }
 }
 
@@ -102,18 +146,39 @@ void CBacnetClientController::runLoop() {
 
 void CBacnetClientController::addSlaveHandle(int index, forte::core::io::IOHandle* handle){
   DEVLOG_DEBUG("[CBacnetClientController] addSlaveHandle(): Registering handle to controller\n");
-  CBacnetServiceHandle *bacnet_handle = static_cast<CBacnetServiceHandle *>(handle);
-  uint8_t pdu[MAX_MPDU];
+  // CBacnetServiceHandle *bacnet_handle = static_cast<CBacnetServiceHandle *>(handle);
+  // uint8_t pdu[MAX_MPDU];
 
-  int pdu_len = bacnet_handle->encodeServiceReq(pdu, 1);
-  printf("%d ----- \n", pdu_len);
+  // int pdu_len = bacnet_handle->encodeServiceReq(pdu, 1);
+  // printf("%d ----- \n", pdu_len);
 
-  for(int i = 0; i<pdu_len-1; i++){
-    printf("%02x ", pdu[i]);
-  }
-  printf("\n");
+  // for(int i = 0; i<pdu_len-1; i++){
+  //   printf("%02x ", pdu[i]);
+  // }
+  // printf("\n");
 }
 
 bool CBacnetClientController::pushToRingbuffer(CBacnetServiceHandle *handle) {
-  
+  if(m_nSendRingbufferSize == cm_nSendRingbufferSize) {
+    return false;
+  }
+  m_aSendRingbuffer[m_nSendRingbufferHeadIndex] = handle;
+  m_nSendRingbufferSize++;
+  m_nSendRingbufferHeadIndex = (m_nSendRingbufferHeadIndex + 1) % cm_nSendRingbufferSize;
+
+  DEVLOG_DEBUG("Pushed to ringbuffer: head: %d tail: %d size: %d\n", m_nSendRingbufferHeadIndex, m_nSendRingbufferTailIndex, m_nSendRingbufferSize);
+  return true;
 }
+
+CBacnetServiceHandle * CBacnetClientController::consumeFromRingbuffer() {
+  if(m_nSendRingbufferSize == 0) {
+    return NULL;
+  }
+  CBacnetServiceHandle *ret = m_aSendRingbuffer[m_nSendRingbufferTailIndex];
+  m_nSendRingbufferSize--;
+  m_nSendRingbufferTailIndex = (m_nSendRingbufferTailIndex + 1) % cm_nSendRingbufferSize; 
+  DEVLOG_DEBUG("Consumed from ringbuffer: head: %d tail: %d size: %d\n", m_nSendRingbufferHeadIndex, m_nSendRingbufferTailIndex, m_nSendRingbufferSize);
+  return ret;
+}
+
+

@@ -59,6 +59,7 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     }
 
     bool pushToRingbuffer(CBacnetServiceHandle *handle);
+    CBacnetServiceHandle * consumeFromRingbuffer();
 
   protected:
     const char* init(); // Initialize the device object (call it's init function)
@@ -88,8 +89,9 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     typedef CBacnetServiceHandle *TBacnetServiceHandlePtr;
     static const uint8_t cm_nSendRingbufferSize = 64;
     TBacnetServiceHandlePtr m_aSendRingbuffer[cm_nSendRingbufferSize];
-    TBacnetServiceHandlePtr m_nSendRingbufferStartIndex;
-    TBacnetServiceHandlePtr m_nSendRingbufferEndIndex;
+    int m_nSendRingbufferHeadIndex;
+    int m_nSendRingbufferTailIndex;
+    int m_nSendRingbufferSize;
     //! SyncObject for protecting the buffer
     CSyncObject mSendRingbufferSync;
 
