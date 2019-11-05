@@ -144,6 +144,88 @@ CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceCo
 
   // OPTION 3
 
+  // BACNET_ADDRESS dst;
+  // dst.mac_len = 6;
+  // dst.mac[0] = 192;
+  // dst.mac[1] = 168;
+  // dst.mac[2] = 1;
+  // dst.mac[3] = 1;
+  // dst.mac[4] = 0xBA;
+  // dst.mac[5] = 0xC0;
+  // dst.net = 0;
+  // dst.len = 0;
+
+  // BACNET_ADDRESS my_adr;
+  // my_adr.mac_len = 6;
+  // my_adr.mac[0] = 192;
+  // my_adr.mac[1] = 168;
+  // my_adr.mac[2] = 1;
+  // my_adr.mac[3] = 0;
+  // my_adr.mac[4] = 0xBA;
+  // my_adr.mac[5] = 0xC0;
+  // my_adr.net = 0;
+  // my_adr.len = 0;
+
+  // BACNET_ADDRESS *dest = &dst;
+  // BACNET_ADDRESS my_address = my_adr;
+
+  // uint8_t PDU_BUFFER[MAX_MPDU];
+  // int pdu_len = 4;
+  // BACNET_NPDU_DATA npdu_data;
+  // npdu_encode_npdu_data(&npdu_data, true, MESSAGE_PRIORITY_NORMAL);
+  // pdu_len += npdu_encode_pdu(&PDU_BUFFER[pdu_len-1], dest, &my_address, &npdu_data);
+
+  // BACNET_READ_PROPERTY_DATA data;
+  // data.object_type = static_cast<BACNET_OBJECT_TYPE>(mServiceConfig.mObjectType);
+  // data.object_instance = mServiceConfig.mObjectId;
+  // data.object_property = static_cast<BACNET_PROPERTY_ID>(mServiceConfig.mObjectProperty);
+  // data.array_index = mServiceConfig.mArrayIndex;
+
+  // pdu_len += rp_encode_apdu(&PDU_BUFFER[pdu_len-1], 1, &data);
+
+  // struct in_addr address;
+  // uint16_t port = 0;
+  // memcpy(&address.s_addr, &dest->mac[0], 4);
+  // memcpy(&port, &dest->mac[4], 2);
+
+  // struct sockaddr_in bvlc_dest;
+  // bvlc_dest.sin_addr.s_addr = address.s_addr;
+  // bvlc_dest.sin_port = port;
+  // PDU_BUFFER[0] = BVLL_TYPE_BACNET_IP;
+  // PDU_BUFFER[1] = BVLC_ORIGINAL_UNICAST_NPDU;
+  // encode_unsigned16(&PDU_BUFFER[2], pdu_len); // encode bvlc length
+
+  // for(int i = 0; i<pdu_len-1; i++){
+  //   printf("%02x ", PDU_BUFFER[i]);
+  // }
+  // printf("\n");
+
+
+  // option 4
+
+  // uint8_t PDU_BUFFER[MAX_MPDU];
+  // int pdu_len=encodeServiceReq(PDU_BUFFER, 1);
+
+
+  // for(int i = 0; i<pdu_len-1; i++){
+  //   printf("%02x ", PDU_BUFFER[i]);
+  // }
+  // printf("\n");
+
+  //bip_set_socket(static_cast<CBacnetClientController *>(controller)->getSocket());
+}
+
+CBacnetReadPropertyHandle::~CBacnetReadPropertyHandle()
+{
+}
+
+
+void CBacnetReadPropertyHandle::get(CIEC_ANY &) {
+  DEVLOG_DEBUG("[CBacnetReadPropertyHandle] get(): \n");
+}
+
+int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id) {
+
   BACNET_ADDRESS dst;
   dst.mac_len = 6;
   dst.mac[0] = 192;
@@ -169,19 +251,21 @@ CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceCo
   BACNET_ADDRESS *dest = &dst;
   BACNET_ADDRESS my_address = my_adr;
 
-  uint8_t PDU_BUFFER[MAX_MPDU];
+
   int pdu_len = 4;
   BACNET_NPDU_DATA npdu_data;
   npdu_encode_npdu_data(&npdu_data, true, MESSAGE_PRIORITY_NORMAL);
-  pdu_len += npdu_encode_pdu(&PDU_BUFFER[pdu_len-1], dest, &my_address, &npdu_data);
+  pdu_len += npdu_encode_pdu(&pdu[pdu_len-1], dest, &my_address, &npdu_data);
 
   BACNET_READ_PROPERTY_DATA data;
+  CBacnetReadPropertyConfigFB::ServiceConfig mServiceConfig = static_cast<CBacnetReadPropertyConfigFB *>(mConfigFB)->m_stServiceConfig;
   data.object_type = static_cast<BACNET_OBJECT_TYPE>(mServiceConfig.mObjectType);
   data.object_instance = mServiceConfig.mObjectId;
   data.object_property = static_cast<BACNET_PROPERTY_ID>(mServiceConfig.mObjectProperty);
   data.array_index = mServiceConfig.mArrayIndex;
 
-  pdu_len += rp_encode_apdu(&PDU_BUFFER[pdu_len-1], 1, &data);
+  pdu_len += rp_encode_apdu(&pdu[pdu_len-1], invoke_id, &data);
+
 
   struct in_addr address;
   uint16_t port = 0;
@@ -191,22 +275,9 @@ CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceCo
   struct sockaddr_in bvlc_dest;
   bvlc_dest.sin_addr.s_addr = address.s_addr;
   bvlc_dest.sin_port = port;
-  PDU_BUFFER[0] = BVLL_TYPE_BACNET_IP;
-  PDU_BUFFER[1] = BVLC_ORIGINAL_UNICAST_NPDU;
-  encode_unsigned16(&PDU_BUFFER[2], pdu_len); // encode bvlc length
-  for(int i = 0; i<pdu_len-1; i++){
-    printf("%02x ", PDU_BUFFER[i]);
-  }
-  printf("\n");
+  pdu[0] = BVLL_TYPE_BACNET_IP;
+  pdu[1] = BVLC_ORIGINAL_UNICAST_NPDU;
+  encode_unsigned16(&pdu[2], pdu_len); // encode bvlc length
 
-  //bip_set_socket(static_cast<CBacnetClientController *>(controller)->getSocket());
-}
-
-CBacnetReadPropertyHandle::~CBacnetReadPropertyHandle()
-{
-}
-
-
-void CBacnetReadPropertyHandle::get(CIEC_ANY &) {
-  
+  return pdu_len;
 }

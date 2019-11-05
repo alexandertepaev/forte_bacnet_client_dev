@@ -18,6 +18,8 @@
 
 #include "bacnet_readproperty_handle.h"
 
+class CBacnetServiceHandle;
+
 class CBacnetClientController: public forte::core::io::IODeviceMultiController {
   friend class CBacnetReadPropertyConfigFB;
   friend class CBacnetServiceHandle;
@@ -56,6 +58,8 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
       return mBacnetSocket;
     }
 
+    bool pushToRingbuffer(CBacnetServiceHandle *handle);
+
   protected:
     const char* init(); // Initialize the device object (call it's init function)
     void deInit() {}; //TODO
@@ -81,11 +85,11 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     TBacnetServiceHandleList *pmServiceList;
 
     //ringbuffer of outgoint messages (TODO change typedef from int to service handles)
-    typedef int *TBacnetServiceHandlePtr;
+    typedef CBacnetServiceHandle *TBacnetServiceHandlePtr;
     static const uint8_t cm_nSendRingbufferSize = 64;
     TBacnetServiceHandlePtr m_aSendRingbuffer[cm_nSendRingbufferSize];
-    uint8_t m_nSendRingbufferStartIndex;
-    uint8_t m_nSendRingbufferEndIndex;
+    TBacnetServiceHandlePtr m_nSendRingbufferStartIndex;
+    TBacnetServiceHandlePtr m_nSendRingbufferEndIndex;
     //! SyncObject for protecting the buffer
     CSyncObject mSendRingbufferSync;
 

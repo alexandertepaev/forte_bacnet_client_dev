@@ -1,8 +1,10 @@
 #include "bacnet_client_controller.h"
 
-CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceMultiController(paDeviceExecution), m_nControllerID(id), pmObjectList(0), m_nSendRingbufferStartIndex(0), m_nSendRingbufferEndIndex(0), pmServiceList(0), mBacnetSocket(0)
+CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceMultiController(paDeviceExecution), m_nControllerID(id), pmObjectList(0), pmServiceList(0), mBacnetSocket(0)
 {
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
+  m_nSendRingbufferStartIndex = m_nSendRingbufferEndIndex = m_aSendRingbuffer[0];
+  
   m_stConfig.nPortNumber = 0;
   m_stConfig.nDeviceObjID = 0;
   m_stConfig.sDeviceObjName = NULL;
@@ -88,7 +90,7 @@ void CBacnetClientController::runLoop() {
   switch (desc->mServiceType)
   {
     case SERVICE_CONFIRMED_READ_PROPERTY:
-      return new CBacnetReadPropertyHandle(this, desc->mDirection, CIEC_ANY::e_WORD, mDeviceExecution, desc->mServiceConfigFB); // Question: is it better to compose a pdu one single time here and store its value or is it better to compose it every time we want to send the request
+      return new CBacnetReadPropertyHandle(this, desc->mDirection, CIEC_ANY::e_DWORD, mDeviceExecution, desc->mServiceConfigFB); // Question: is it better to compose a pdu one single time here and store its value or is it better to compose it every time we want to send the request
       break;
     default:
       DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Unknown/Unsupported BACnet Service\n");
@@ -99,6 +101,19 @@ void CBacnetClientController::runLoop() {
 
 
 void CBacnetClientController::addSlaveHandle(int index, forte::core::io::IOHandle* handle){
-   DEVLOG_DEBUG("[CBacnetClientController] addSlaveHandle(): Registering handle to controller\n");
-   
+  DEVLOG_DEBUG("[CBacnetClientController] addSlaveHandle(): Registering handle to controller\n");
+  CBacnetServiceHandle *bacnet_handle = static_cast<CBacnetServiceHandle *>(handle);
+  uint8_t pdu[MAX_MPDU];
+
+  int pdu_len = bacnet_handle->encodeServiceReq(pdu, 1);
+  printf("%d ----- \n", pdu_len);
+
+  for(int i = 0; i<pdu_len-1; i++){
+    printf("%02x ", pdu[i]);
+  }
+  printf("\n");
+}
+
+bool CBacnetClientController::pushToRingbuffer(CBacnetServiceHandle *handle) {
+  
 }

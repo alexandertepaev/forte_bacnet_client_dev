@@ -12,6 +12,8 @@ private:
 public:
   CBacnetServiceHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution);
   ~CBacnetServiceHandle();
+
+  virtual int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id) = 0;
 };
 
 #endif
