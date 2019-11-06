@@ -79,15 +79,16 @@ CBacnetClientController::TSocketDescriptor CBacnetClientController::openBacnetIP
 void CBacnetClientController::runLoop() {
   DEVLOG_DEBUG("[CBacnetClientController] runLoop(): Starting controller loop\n");
   while(isAlive()) {
+    // sending from ringbuffer
     if(m_nSendRingbufferSize != 0) {
       CBacnetServiceHandle *handle = consumeFromRingbuffer();
       uint8_t pdu[MAX_MPDU];
       BACNET_ADDRESS dst;
       dst.mac_len = 6;
-      dst.mac[0] = 192;
-      dst.mac[1] = 168;
-      dst.mac[2] = 1;
-      dst.mac[3] = 1;
+      dst.mac[0] = 169;
+      dst.mac[1] = 254;
+      dst.mac[2] = 95;
+      dst.mac[3] = 92;
       dst.mac[4] = 0xBA;
       dst.mac[5] = 0xC0;
       dst.net = 0;
@@ -95,10 +96,10 @@ void CBacnetClientController::runLoop() {
 
       BACNET_ADDRESS my_adr;
       my_adr.mac_len = 6;
-      my_adr.mac[0] = 192;
-      my_adr.mac[1] = 168;
-      my_adr.mac[2] = 1;
-      my_adr.mac[3] = 0;
+      my_adr.mac[0] = 169;
+      my_adr.mac[1] = 254;
+      my_adr.mac[2] = 95;
+      my_adr.mac[3] = 91;
       my_adr.mac[4] = 0xBA;
       my_adr.mac[5] = 0xC0;
       my_adr.net = 0;
@@ -122,9 +123,31 @@ void CBacnetClientController::runLoop() {
       bvlc_dest.sin_port = port;
   
       sendto(mBacnetSocket, (char *) pdu, pdu_len, 0, (struct sockaddr *) &bvlc_dest, sizeof(struct sockaddr));
-
-
     }
+    // receiving response or COV reports
+    struct timeval select_timeout;
+    select_timeout.tv_sec = 0;
+    select_timeout.tv_usec = 1000 * 100; // 100 ms timeout on receive
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(mBacnetSocket, &read_fds);
+    if(select(mBacnetSocket+1, &read_fds, NULL, NULL, &select_timeout) > 0){
+      uint8_t npdu[MAX_PDU];
+      //sockaddr_in from;
+      //socklen_t fromLen = sizeof(from);
+      int rcv_retval = recvfrom(mBacnetSocket, npdu, sizeof(npdu), 0, NULL, NULL);
+      if(rcv_retval > 0) {
+        printf("Received packet: ");
+        for(int i=0; i<rcv_retval; i++){
+          printf("%02X ", npdu[i]);
+        }
+        printf("\n");
+      } else  {
+        printf("no data available\n");
+      }
+    }
+
+    
   }
 }
 

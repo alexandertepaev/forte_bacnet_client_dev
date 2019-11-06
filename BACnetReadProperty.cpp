@@ -58,8 +58,8 @@ void CBacnetReadPropertyConfigFB::executeEvent(int pa_nEIID){
 
 */
 uint32_t getObjectType(CIEC_WSTRING paObjectType){
-  if(paObjectType == "ANALOG_INPUT"){
-    return OBJECT_ANALOG_INPUT;
+  if(paObjectType == "ANALOG_OUTPUT"){
+    return OBJECT_ANALOG_OUTPUT;
   }
 }
 
