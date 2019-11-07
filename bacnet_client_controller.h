@@ -61,6 +61,8 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     bool pushToRingbuffer(CBacnetServiceHandle *handle);
     CBacnetServiceHandle * consumeFromRingbuffer();
 
+    void decodeBacnetPacket(uint8_t *pdu, uint16_t len);
+
   protected:
     const char* init(); // Initialize the device object (call it's init function)
     void deInit() {}; //TODO
