@@ -20,6 +20,7 @@ public:
   CBacnetServiceConfigFB *mConfigFB;
 
   int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *my_address, BACNET_ADDRESS *dest);
+  void decodeServiceResp(const uint8_t &invoke_id);
 
 protected:
   virtual void set(const CIEC_ANY &){};

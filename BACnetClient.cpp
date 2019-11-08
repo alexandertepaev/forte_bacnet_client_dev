@@ -45,9 +45,6 @@ const SFBInterfaceSpec CBacnetClientConfigFB::scm_stFBInterfaceSpec = {
 int CBacnetClientConfigFB::sm_nControllerInstances = 0;
 
 void CBacnetClientConfigFB::executeEvent(int pa_nEIID){
-
-  DEVLOG_DEBUG("\n\n\n");
-  DEVLOG_DEBUG("[CBacnetClientConfigFB] init: Bacnet Stack Version: %s\n", BACNET_VERSION_TEXT);
   IOConfigFBController::executeEvent(pa_nEIID);
 
   if (BACnetAdapterOut().INITO() == pa_nEIID) {

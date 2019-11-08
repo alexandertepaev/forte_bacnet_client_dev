@@ -258,5 +258,14 @@ int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &inv
   pdu[1] = BVLC_ORIGINAL_UNICAST_NPDU;
   encode_unsigned16(&pdu[2], pdu_len); // encode bvlc length
 
+  // TODO move this to controller
+  CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
+  controller->addInvokeIDHandlePair(invoke_id, this);
   return pdu_len;
+}
+
+void CBacnetReadPropertyHandle::decodeServiceResp(const uint8_t &invoke_id) {
+  DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Decoding APDU\n");
+  CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
+  controller->removeInvokeIDHanlePair(invoke_id);
 }

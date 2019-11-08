@@ -63,6 +63,16 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
 
     void decodeBacnetPacket(uint8_t *pdu, uint16_t len);
 
+    void decodeBacnetBVLC(uint8_t *pdu, uint16_t len, sockaddr_in *src);
+
+    sockaddr_in getMyNetworkAddress();
+
+    sockaddr_in mMyNetworkAddress;
+
+    bool addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *handle);
+
+    bool removeInvokeIDHanlePair(const uint8_t &paInvokeID);
+
   protected:
     const char* init(); // Initialize the device object (call it's init function)
     void deInit() {}; //TODO
@@ -101,6 +111,10 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     typedef int TSocketDescriptor;
     TSocketDescriptor mBacnetSocket;
     TSocketDescriptor openBacnetIPSocket();
+
+    // reuests awaiting response
+    typedef std::map<uint8_t, CBacnetServiceHandle *> TInvokeIDHandleMap;
+    TInvokeIDHandleMap mInvokeIDsHandles; // TODO - better naiming
 
     // address list (maybe bacnet stack has such a struct already) 
 };

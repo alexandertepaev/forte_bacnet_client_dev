@@ -39,21 +39,30 @@ const char* CBacnetClientController::init() {
   // ringbuffer
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
   m_nSendRingbufferHeadIndex = m_nSendRingbufferTailIndex = m_nSendRingbufferSize = 0; 
+  
+  // get my address
+  mMyNetworkAddress = getMyNetworkAddress();
   // open socket
   mBacnetSocket = openBacnetIPSocket();
+  DEVLOG_DEBUG("[CBacnetClientController] init(): Opened BACnet client UDP socket %s:%04X\n", inet_ntoa(mMyNetworkAddress.sin_addr), ntohs(mMyNetworkAddress.sin_port));
   return 0;
 }
 
-CBacnetClientController::TSocketDescriptor CBacnetClientController::openBacnetIPSocket() {
-  //get my address - why do we need it?
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr)); 
-  strncpy(ifr.ifr_name, "wlp4s0", sizeof(ifr.ifr_name));
+#define NETWORK_IFACE_NAME "enp0s25"
+sockaddr_in CBacnetClientController::getMyNetworkAddress() {
+  sockaddr_in my_addr = {};
+  ifreq ifr = {};
+  strncpy(ifr.ifr_name, NETWORK_IFACE_NAME, sizeof(ifr.ifr_name));
   int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-  int rv = ioctl(fd, SIOCGIFADDR, &ifr);
+  (void) ioctl(fd, SIOCGIFADDR, &ifr);
   close(fd);
-  struct sockaddr_in *my_addr = (struct sockaddr_in *)&ifr.ifr_addr;
+  my_addr = *((struct sockaddr_in *)&ifr.ifr_addr);
+  my_addr.sin_port = htons(m_stConfig.nPortNumber);
+  return my_addr;
+}
 
+
+CBacnetClientController::TSocketDescriptor CBacnetClientController::openBacnetIPSocket() {
   //open socket
   int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if(sockfd <= 0) {
@@ -70,8 +79,6 @@ CBacnetClientController::TSocketDescriptor CBacnetClientController::openBacnetIP
     DEVLOG_DEBUG("[CBacnetClientController] Failed to bind socket\n");
     return -1;
   } else {
-    my_addr->sin_port = address.sin_port;
-    DEVLOG_DEBUG("[CBacnetClientController] Opened BACnet client UDP socket %s:%04X\n", inet_ntoa(my_addr->sin_addr), ntohs(my_addr->sin_port));
     return sockfd;
   }
 }
@@ -139,16 +146,17 @@ void CBacnetClientController::runLoop() {
     FD_SET(mBacnetSocket, &read_fds);
     if(select(mBacnetSocket+1, &read_fds, NULL, NULL, &select_timeout) > 0){
       uint8_t npdu[MAX_PDU];
-      //sockaddr_in from;
-      //socklen_t fromLen = sizeof(from);
-      int rcv_retval = recvfrom(mBacnetSocket, npdu, sizeof(npdu), 0, NULL, NULL);
+      sockaddr_in src;
+      socklen_t srcLen = sizeof(src);
+      int rcv_retval = recvfrom(mBacnetSocket, npdu, sizeof(npdu), 0, (sockaddr *) &src, &srcLen);
       if(rcv_retval > 0) {
         DEVLOG_DEBUG("[CBacnetClientController] Received packet of length %d: ", rcv_retval);
         for(int i=0; i<rcv_retval; i++){
           printf("%02X ", npdu[i]);
         }
         printf("\n");
-        decodeBacnetPacket(npdu, rcv_retval);
+        decodeBacnetBVLC(npdu, rcv_retval, &src);
+        //decodeBacnetPacket(npdu, rcv_retval);
       } else  {
         DEVLOG_DEBUG("[CBacnetClientController] recvfrom() failed\n");
       }
@@ -211,6 +219,58 @@ CBacnetServiceHandle * CBacnetClientController::consumeFromRingbuffer() {
   return ret;
 }
 
+
+void CBacnetClientController::decodeBacnetBVLC(uint8_t *pdu, uint16_t len, sockaddr_in *src) {
+  if (pdu[0] != BVLL_TYPE_BACNET_IP) {
+    return;
+  }
+
+  uint16_t npdu_len = 0;
+  // decode the length of the pdu (inclusive BVLC)
+  (void) decode_unsigned16(&pdu[2], &npdu_len);
+  // packet contains only BVLC or too large
+  if ((npdu_len < 4) || (npdu_len > (MAX_MPDU-4))) {
+        return;
+  }
+
+  // subtract the BVLC header length
+  npdu_len -= 4;
+
+  //decide depending on the function code of the packet
+  switch (pdu[1]) {
+     // see bvlc.c - bvlc_receive() for other function codes
+    case BVLC_ORIGINAL_UNICAST_NPDU:
+      if(pdu[4] == BACNET_PROTOCOL_VERSION) {
+        // do not process packets from me
+        if(src->sin_addr.s_addr != mMyNetworkAddress.sin_addr.s_addr || 
+           src->sin_port != mMyNetworkAddress.sin_port) {
+
+          uint8_t invoke_id = pdu[7];
+          DEVLOG_DEBUG("[CBacnetClientController] decodeBacnetBVLC(): Received supported BACnet Original Unicast NPDU from %s:%04X, InvokeID: %d\n", inet_ntoa(src->sin_addr), ntohs(src->sin_port), invoke_id);
+
+          // call handles decode function
+          if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
+            DEVLOG_DEBUG("Found entry\n");
+            mInvokeIDsHandles[invoke_id]->decodeServiceResp(invoke_id);
+            // paHandle->onObserver(mObservers[idStr]);
+            // mObservers[idStr]->onHandle(paHandle);
+
+            // DEVLOG_INFO("[IOMapper] Connected %s\n", paId.getValue());
+          }
+
+        } else {
+          DEVLOG_DEBUG("Message from me");
+        }
+      }
+      // // shift the buffer
+      // // he also copies source address (needed?)
+      // for (int i = 0; i < npdu_len; i++) {
+      //     pdu[i] = pdu[4 + i];
+      // }
+      // break;
+  }
+
+}
 
 void CBacnetClientController::decodeBacnetPacket(uint8_t *pdu, uint16_t len) {
    // check if we received bacnet/ip packet
@@ -296,3 +356,26 @@ void CBacnetClientController::decodeBacnetPacket(uint8_t *pdu, uint16_t len) {
     }
 }
 
+bool CBacnetClientController::addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *paHandle) {
+  // Check for duplicates
+  if(mInvokeIDsHandles.find(paInvokeID) != mInvokeIDsHandles.end()) {
+    DEVLOG_WARNING("[CBacnetClientController] addInvokeIDHandlePair(): Duplicated mInvokeIDsHandles entry '%d'\n", paInvokeID);
+    return false;
+  }
+
+  mInvokeIDsHandles.insert(std::make_pair(paInvokeID, paHandle));
+  DEVLOG_WARNING("[CBacnetClientController] addInvokeIDHandlePair(): New mInvokeIDsHandles entry '%d', mInvokeIDsHandles's size=%d\n", paInvokeID, mInvokeIDsHandles.size());
+
+  return true;
+}
+
+bool CBacnetClientController::removeInvokeIDHanlePair(const uint8_t &paInvokeID) {
+  for(TInvokeIDHandleMap::iterator it = mInvokeIDsHandles.begin(); it != mInvokeIDsHandles.end(); ++it) {
+    if(it->first == paInvokeID) {
+      mInvokeIDsHandles.erase(it);
+      DEVLOG_WARNING("[CBacnetClientController] removeInvokeIDHanlePair(): Erased mInvokeIDsHandles's entry '%d', mInvokeIDsHandles's size=%d\n", paInvokeID, mInvokeIDsHandles.size());
+      return true;
+    }
+  }
+  return false;
+}
