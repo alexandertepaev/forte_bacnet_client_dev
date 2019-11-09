@@ -112,19 +112,15 @@ void CBacnetClientController::runLoop() {
       my_adr.net = 0;
       my_adr.len = 0;
 
-      int pdu_len = handle->encodeServiceReq(pdu, 1, &my_adr, &dst);
+      uint8_t invoke_id = 1; // TODO get free invoke id
 
-      
-      struct in_addr address;
-      uint16_t port = 0;
-      memcpy(&address.s_addr, &dst.mac[0], 4);
-      memcpy(&port, &dst.mac[4], 2);
+      int pdu_len = handle->encodeServiceReq(pdu, invoke_id, &my_adr, &dst);
 
       struct sockaddr_in bvlc_dest;
       bvlc_dest.sin_family = AF_INET;
-      bvlc_dest.sin_addr.s_addr = address.s_addr;
-      bvlc_dest.sin_port = port;
-  
+      memcpy(&bvlc_dest.sin_addr.s_addr, &dst.mac[0], 4);
+      memcpy(&bvlc_dest.sin_port, &dst.mac[4], 2);
+      
       int send_len = sendto(mBacnetSocket, (char *) pdu, pdu_len, 0, (struct sockaddr *) &bvlc_dest, sizeof(struct sockaddr));
       if(send_len > 0){
         DEVLOG_DEBUG("[CBacnetClientController] Sent packet of length %d: ", send_len);
@@ -132,15 +128,18 @@ void CBacnetClientController::runLoop() {
           printf("%02X ", pdu[i]);
         }
         printf("\n");
+
+        addInvokeIDHandlePair(invoke_id, handle);
       } else {
         DEVLOG_DEBUG("[CBacnetClientController] sendto() failed");
       }
-
     }
+
+
     // receiving response or COV reports
     struct timeval select_timeout;
     select_timeout.tv_sec = 0;
-    select_timeout.tv_usec = 1000 * 100; // 100 ms timeout on receive - 
+    select_timeout.tv_usec = 1000 * 100; // 100 ms timeout on receive - non-blocking recv
     fd_set read_fds;
     FD_ZERO(&read_fds);
     FD_SET(mBacnetSocket, &read_fds);
@@ -233,7 +232,7 @@ void CBacnetClientController::decodeBacnetBVLC(uint8_t *pdu, uint16_t len, socka
         return;
   }
 
-  // subtract the BVLC header length
+  // substract the BVLC header length
   npdu_len -= 4;
 
   //decide depending on the function code of the packet
@@ -245,21 +244,40 @@ void CBacnetClientController::decodeBacnetBVLC(uint8_t *pdu, uint16_t len, socka
         if(src->sin_addr.s_addr != mMyNetworkAddress.sin_addr.s_addr || 
            src->sin_port != mMyNetworkAddress.sin_port) {
 
-          uint8_t invoke_id = pdu[7];
-          DEVLOG_DEBUG("[CBacnetClientController] decodeBacnetBVLC(): Received supported BACnet Original Unicast NPDU from %s:%04X, InvokeID: %d\n", inet_ntoa(src->sin_addr), ntohs(src->sin_port), invoke_id);
+          // uint8_t invoke_id = pdu[7];
+          // DEVLOG_DEBUG("[CBacnetClientController] decodeBacnetBVLC(): Received supported BACnet Original Unicast NPDU from %s:%04X, InvokeID: %d\n", inet_ntoa(src->sin_addr), ntohs(src->sin_port), invoke_id);
 
-          // call handles decode function
-          if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
-            DEVLOG_DEBUG("Found entry\n");
-            mInvokeIDsHandles[invoke_id]->decodeServiceResp(invoke_id);
-            // paHandle->onObserver(mObservers[idStr]);
-            // mObservers[idStr]->onHandle(paHandle);
+          BACNET_ADDRESS bacnet_dest = {};
+          BACNET_ADDRESS bacnet_src = {};
+          BACNET_NPDU_DATA npdu_data = {};
 
-            // DEVLOG_INFO("[IOMapper] Connected %s\n", paId.getValue());
+          int apdu_offset = npdu_decode(pdu, &bacnet_dest, &bacnet_src, &npdu_data);
+          // there is an aplication pdu and it is of the proper length
+          if ((apdu_offset > 0) && (apdu_offset <= npdu_len)) {
+            // message to our network or broadcast message
+            switch(pdu[apdu_offset] & 0xF0) {
+              case PDU_TYPE_COMPLEX_ACK:
+                BACNET_CONFIRMED_SERVICE_ACK_DATA service_ack_data = {};
+                service_ack_data.segmented_message = (pdu[apdu_offset++] & 1<<3) ? true : false;
+                service_ack_data.invoke_id = pdu[apdu_offset++];
+                // for now support only unsegmented messages -- see apdu.c lines 538-545 for segmented messages
+                if (!service_ack_data.segmented_message) {
+                  DEVLOG_DEBUG("[CBacnetClientController] decodeBacnetBVLC(): Received supported BACnet Original Unicast NPDU from %s:%04X, InvokeID: %d\n", inet_ntoa(src->sin_addr), ntohs(src->sin_port), service_ack_data.invoke_id);
+
+                  // call handles decode function
+                  if(mInvokeIDsHandles.find(service_ack_data.invoke_id) != mInvokeIDsHandles.end()) {
+                    DEVLOG_DEBUG("Found entry: npdu_len=%d, apdu_offset=%d\n", npdu_len, apdu_offset);
+                    // apdu_offset+2: do not pass service_ack_data + invoke_id, len 
+                    mInvokeIDsHandles[service_ack_data.invoke_id]->decodeServiceResp(&pdu[apdu_offset], npdu_len-(apdu_offset-4));
+                    removeInvokeIDHanlePair(service_ack_data.invoke_id);
+                  }
+                
+                }
+              break;
+            }
           }
-
         } else {
-          DEVLOG_DEBUG("Message from me");
+          DEVLOG_DEBUG("Message from me - ignoring\n");
         }
       }
       // // shift the buffer
@@ -278,7 +296,6 @@ void CBacnetClientController::decodeBacnetPacket(uint8_t *pdu, uint16_t len) {
     return;
   }
   
-
   uint16_t npdu_len = 0;
   // decode the length of the pdu (inclusive BVLC)
   (void) decode_unsigned16(&pdu[2], &npdu_len);

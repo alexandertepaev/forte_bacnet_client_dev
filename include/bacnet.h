@@ -3,10 +3,10 @@
 
 /* core files */
 #include "version.h"
-// #include "config.h"
+//#include "config.h"
 // #include "address.h"
 #include "apdu.h"
-// #include "bacapp.h"
+#include "bacapp.h"
 // #include "bacdcode.h"
 #include "bacint.h"
 // #include "bacreal.h"

@@ -15,7 +15,7 @@ public:
   ~CBacnetServiceHandle();
 
   virtual int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *my_address, BACNET_ADDRESS *dest) = 0;
-  virtual void decodeServiceResp(const uint8_t &invoke_id) = 0;
+  virtual void decodeServiceResp(uint8_t *pdu, const uint8_t &len) = 0;
 };
 
 #endif
