@@ -1,3 +1,5 @@
 09.11:
   + Moved insertion/deletion to/form invokeid-handle diction to the controller
   + Refactored send routine in controller's runLoop() - removed not needed copy of destenation address
+  + Decoding BVLC function (should be renamed): removed support of segmented messages - for now only unsegmented complex acks are supported
+  + Can now decode received application data (in ReadPropertyHandle). Can only get tag of the received data (Real), but cannot access value.Real. 

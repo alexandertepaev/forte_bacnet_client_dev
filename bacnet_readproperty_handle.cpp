@@ -53,12 +53,18 @@ void CBacnetReadPropertyHandle::decodeServiceResp(uint8_t *pdu, const uint8_t &l
   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Decoding APDU of length: %d\n", len);
   BACNET_READ_PROPERTY_DATA data;
   int rp_len = rp_ack_decode_service_request(&pdu[1], len-1, &data);
-  if(rp_len > 0){
+  CBacnetReadPropertyConfigFB::ServiceConfig mServiceConfig = static_cast<CBacnetReadPropertyConfigFB *>(mConfigFB)->m_stServiceConfig;
+
+  if(rp_len > 0 && data.object_type == static_cast<BACNET_OBJECT_TYPE>(mServiceConfig.mObjectType) &&
+                   data.object_instance == mServiceConfig.mObjectId &&
+                   data.object_property == static_cast<BACNET_PROPERTY_ID>(mServiceConfig.mObjectProperty)){
+
     DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Decoded: Obj_Type=%d, Obj_Instance=%d, Obj_Prop=%d, App_Data_Len=%d\n", data.object_type, data.object_instance, data.object_property, data.application_data_len);
     BACNET_APPLICATION_DATA_VALUE value;
     int len = bacapp_decode_application_data(data.application_data, (uint8_t) data.application_data_len, &value);
     if(value.tag == BACNET_APPLICATION_TAG_REAL) {
-      DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application Value=%f\n", value.Real);
+      DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application Value=%f\n", value.type.Real);
     }
+  
   }
 }
