@@ -64,6 +64,10 @@ void CBacnetReadPropertyHandle::decodeServiceResp(uint8_t *pdu, const uint8_t &l
     int len = bacapp_decode_application_data(data.application_data, (uint8_t) data.application_data_len, &value);
     if(value.tag == BACNET_APPLICATION_TAG_REAL) {
       DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application Value=%f\n", value.type.Real);
+      in_qo = true;
+      in_data = (float) value.type.Real;
+      fireConfirmationEvent();
+      
     }
   
   }
