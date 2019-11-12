@@ -41,24 +41,18 @@ const SFBInterfaceSpec FORTE_ID::scm_stFBInterfaceSpec = {
   0, 0
 };
 
-int current_state = 0;
 
 void FORTE_ID::executeEvent(int pa_nEIID){
   QO() = QI();
   switch(pa_nEIID){
     case cg_nExternalEventID:
       //sendOutputEvent(scm_nEventINDID);
-      current_state = 3;
-      DEVLOG_DEBUG("External event received, current_state = %d\n", current_state);
-      QO() = mHandle->in_qo;
-      IN() = mHandle->in_data;
+      QO() = CProcessInterface::readDWord();
       sendOutputEvent(scm_nEventCNFID);
       break;
     case scm_nEventINITID:
       if(true == QI()){
         QO() = CProcessInterface::initialise(true);  //initialise as input
-        if(QO() == true)
-          current_state = 1;
       }
       else{
         QO() = CProcessInterface::deinitialise();
@@ -70,7 +64,6 @@ void FORTE_ID::executeEvent(int pa_nEIID){
       //   QO() = CProcessInterface::readDWord();
       // }
       // sendOutputEvent(scm_nEventCNFID);
-      current_state = 2;
       CProcessInterface::readDWord();
       break;
   }

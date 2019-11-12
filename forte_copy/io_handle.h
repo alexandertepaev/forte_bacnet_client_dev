@@ -52,10 +52,7 @@ namespace forte {
           virtual void get(CIEC_ANY &) = 0;
 
           void onChange();
-
-          bool in_qo;
-          float in_data;
-
+          
         protected:
 
           IODeviceController *mController;

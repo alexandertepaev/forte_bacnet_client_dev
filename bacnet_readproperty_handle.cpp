@@ -1,10 +1,13 @@
 #include "bacnet_readproperty_handle.h"
 
+int state;
+
 CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution), mConfigFB(paServiceConfigFB)
 {
   CBacnetReadPropertyConfigFB::ServiceConfig mServiceConfig = static_cast<CBacnetReadPropertyConfigFB *>(paServiceConfigFB)->m_stServiceConfig;
   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] CBacnetReadPropertyHandle(): Initializing ReadProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, dummy_value=%d\n",mServiceConfig.mDeviceId, mServiceConfig.mObjectType, mServiceConfig.mObjectId, mServiceConfig.mObjectProperty, mServiceConfig.mArrayIndex, mServiceConfig.dummy_value);
 
+  state = 0;
   //TODO: check if we know the address of the device. (controller->checkAddr(...)) If we don't know it, construct WHO-IS pdu and send it.
 
 }
@@ -14,10 +17,18 @@ CBacnetReadPropertyHandle::~CBacnetReadPropertyHandle()
 }
 
 
-void CBacnetReadPropertyHandle::get(CIEC_ANY &) {
-  DEVLOG_DEBUG("[CBacnetReadPropertyHandle] get(): \n");
-  CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
-  controller->pushToRingbuffer(this);
+void CBacnetReadPropertyHandle::get(CIEC_ANY &paValue) {
+  if(state == 0) {
+    DEVLOG_DEBUG("[CBacnetReadPropertyHandle] get(): \n");
+    CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
+    controller->pushToRingbuffer(this);
+    state = 1;
+  } else if (state == 1) {
+    static_cast<CIEC_DWORD&>(paValue) = present_value;
+    state = 0;
+  } else {
+    // 
+  }
 }
 
 int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *my_address, BACNET_ADDRESS *dest) {
@@ -64,10 +75,14 @@ void CBacnetReadPropertyHandle::decodeServiceResp(uint8_t *pdu, const uint8_t &l
     int len = bacapp_decode_application_data(data.application_data, (uint8_t) data.application_data_len, &value);
     if(value.tag == BACNET_APPLICATION_TAG_REAL) {
       DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application Value=%f\n", value.type.Real);
-      in_qo = true;
-      in_data = (float) value.type.Real;
+      // in_qo = true;
+      // in_data = (float) value.type.Real;
+      // fireConfirmationEvent();
+      present_value = static_cast<CIEC_DWORD>(value.type.Real);
       fireConfirmationEvent();
-      
+      //output_value = &(present_value);
+      //output_value.setValue(static_cast<const CIEC_ANY &>(value.type.Real));
+
     }
   
   }
