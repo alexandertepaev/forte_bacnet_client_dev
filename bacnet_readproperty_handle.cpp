@@ -1,13 +1,10 @@
 #include "bacnet_readproperty_handle.h"
 
-int state;
-
 CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution), mConfigFB(paServiceConfigFB)
 {
   CBacnetReadPropertyConfigFB::ServiceConfig mServiceConfig = static_cast<CBacnetReadPropertyConfigFB *>(paServiceConfigFB)->m_stServiceConfig;
   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] CBacnetReadPropertyHandle(): Initializing ReadProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, dummy_value=%d\n",mServiceConfig.mDeviceId, mServiceConfig.mObjectType, mServiceConfig.mObjectId, mServiceConfig.mObjectProperty, mServiceConfig.mArrayIndex, mServiceConfig.dummy_value);
 
-  state = 0;
   //TODO: check if we know the address of the device. (controller->checkAddr(...)) If we don't know it, construct WHO-IS pdu and send it.
 
 }
@@ -18,14 +15,14 @@ CBacnetReadPropertyHandle::~CBacnetReadPropertyHandle()
 
 
 void CBacnetReadPropertyHandle::get(CIEC_ANY &paValue) {
-  if(state == 0) {
+  if(m_eHandleState == e_Idle) {
     DEVLOG_DEBUG("[CBacnetReadPropertyHandle] get(): \n");
     CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
     controller->pushToRingbuffer(this);
-    state = 1;
-  } else if (state == 1) {
+    m_eHandleState = e_AwaitingResponse;
+  } else if (m_eHandleState == e_AwaitingResponse) {
     static_cast<CIEC_DWORD&>(paValue) = present_value;
-    state = 0;
+    m_eHandleState = e_Idle;
   } else {
     // 
   }

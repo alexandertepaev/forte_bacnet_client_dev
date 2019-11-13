@@ -28,6 +28,12 @@ public:
   void setPriority(int paPriority) { };
   int getPriority(void) const { return 0; };
   size_t getIdentifier() const { return 0; };
+
+  enum EBacnetHandleState{
+    e_Idle, e_AwaitingResponse 
+  };
+
+  EBacnetHandleState m_eHandleState;
 };
 
 #endif

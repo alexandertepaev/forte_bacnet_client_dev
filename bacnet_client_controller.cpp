@@ -269,7 +269,7 @@ void CBacnetClientController::decodeBacnetBVLC(uint8_t *pdu, uint16_t len, socka
                     DEVLOG_DEBUG("Found entry: npdu_len=%d, apdu_offset=%d\n", npdu_len, apdu_offset);
                     // apdu_offset+2: do not pass service_ack_data + invoke_id, len 
                     mInvokeIDsHandles[service_ack_data.invoke_id]->decodeServiceResp(&pdu[apdu_offset], npdu_len-(apdu_offset-4));
-                    removeInvokeIDHanlePair(service_ack_data.invoke_id);
+                    removeInvokeIDHandlePair(service_ack_data.invoke_id);
                   }
                 
                 }
@@ -386,11 +386,11 @@ bool CBacnetClientController::addInvokeIDHandlePair(const uint8_t &paInvokeID, C
   return true;
 }
 
-bool CBacnetClientController::removeInvokeIDHanlePair(const uint8_t &paInvokeID) {
+bool CBacnetClientController::removeInvokeIDHandlePair(const uint8_t &paInvokeID) {
   for(TInvokeIDHandleMap::iterator it = mInvokeIDsHandles.begin(); it != mInvokeIDsHandles.end(); ++it) {
     if(it->first == paInvokeID) {
       mInvokeIDsHandles.erase(it);
-      DEVLOG_WARNING("[CBacnetClientController] removeInvokeIDHanlePair(): Erased mInvokeIDsHandles's entry '%d', mInvokeIDsHandles's size=%d\n", paInvokeID, mInvokeIDsHandles.size());
+      DEVLOG_WARNING("[CBacnetClientController] removeInvokeIDHandlePair(): Erased mInvokeIDsHandles's entry '%d', mInvokeIDsHandles's size=%d\n", paInvokeID, mInvokeIDsHandles.size());
       return true;
     }
   }

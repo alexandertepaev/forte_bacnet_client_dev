@@ -71,7 +71,7 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
 
     bool addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *handle);
 
-    bool removeInvokeIDHanlePair(const uint8_t &paInvokeID);
+    bool removeInvokeIDHandlePair(const uint8_t &paInvokeID);
 
   protected:
     const char* init(); // Initialize the device object (call it's init function)
