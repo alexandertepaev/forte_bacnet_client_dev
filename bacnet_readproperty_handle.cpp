@@ -33,7 +33,6 @@ int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &inv
   int pdu_len = 4;
   BACNET_NPDU_DATA npdu_data;
   npdu_encode_npdu_data(&npdu_data, true, MESSAGE_PRIORITY_NORMAL);
-  pdu_len += npdu_encode_pdu(&pdu[pdu_len], dest, my_address, &npdu_data);
 
   BACNET_READ_PROPERTY_DATA data;
   CBacnetReadPropertyConfigFB::ServiceConfig mServiceConfig = static_cast<CBacnetReadPropertyConfigFB *>(mConfigFB)->m_stServiceConfig;
@@ -41,6 +40,14 @@ int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &inv
   data.object_instance = mServiceConfig.mObjectId;
   data.object_property = static_cast<BACNET_PROPERTY_ID>(mServiceConfig.mObjectProperty);
   data.array_index = mServiceConfig.mArrayIndex;
+
+  unsigned max_apdu = 0;
+  BACNET_ADDRESS Target_Address;
+  bool found = address_bind_request(mServiceConfig.mDeviceId, &max_apdu, &Target_Address); //TODO - no need to do it every time, can be done one time during initialization of the handle
+  DEVLOG_DEBUG("[CBacnetReadPropertyHandle] encodeServiceReq(): Address found=%d\n", found);
+
+  //pdu_len += npdu_encode_pdu(&pdu[pdu_len], dest, my_address, &npdu_data);
+  pdu_len += npdu_encode_pdu(&pdu[pdu_len], &Target_Address, my_address, &npdu_data);
 
    DEVLOG_DEBUG("[CBacnetReadPropertyHandle] encodeServiceReq(): Encoding ReadProperty request with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, dummy_value=%d, invoke_id=%d\n",mServiceConfig.mDeviceId, mServiceConfig.mObjectType, mServiceConfig.mObjectId, mServiceConfig.mObjectProperty, mServiceConfig.mArrayIndex, mServiceConfig.dummy_value, invoke_id);
 

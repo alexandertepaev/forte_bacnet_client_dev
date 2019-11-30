@@ -45,6 +45,9 @@ const char* CBacnetClientController::init() {
   // open socket
   mBacnetSocket = openBacnetIPSocket();
   DEVLOG_DEBUG("[CBacnetClientController] init(): Opened BACnet client UDP socket %s:%04X\n", inet_ntoa(mMyNetworkAddress.sin_addr), ntohs(mMyNetworkAddress.sin_port));
+
+  address_init();
+  
   return 0;
 }
 
