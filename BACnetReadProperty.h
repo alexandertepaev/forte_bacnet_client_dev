@@ -114,7 +114,7 @@ public:
   virtual ~CBacnetReadPropertyConfigFB(){};
 
   struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
-    uint32_t dummy_value;
+    uint32_t dummy_value; // This way we can add new field to the config
   };
 
   ServiceConfig m_stServiceConfig;

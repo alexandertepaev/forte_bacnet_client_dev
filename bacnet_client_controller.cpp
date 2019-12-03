@@ -117,7 +117,8 @@ void CBacnetClientController::runLoop() {
 
       uint8_t invoke_id = 1; // TODO get free invoke id
 
-      int pdu_len = handle->encodeServiceReq(pdu, invoke_id, &my_adr, &dst);
+      //int pdu_len = handle->encodeServiceReq(pdu, invoke_id, &my_adr, &dst);
+      int pdu_len = handle->encodeServiceReq(pdu, invoke_id);
 
       struct sockaddr_in bvlc_dest;
       bvlc_dest.sin_family = AF_INET;
@@ -291,89 +292,6 @@ void CBacnetClientController::decodeBacnetBVLC(uint8_t *pdu, uint16_t len, socka
       // break;
   }
 
-}
-
-void CBacnetClientController::decodeBacnetPacket(uint8_t *pdu, uint16_t len) {
-   // check if we received bacnet/ip packet
-  if (pdu[0] != BVLL_TYPE_BACNET_IP) {
-    return;
-  }
-  
-  uint16_t npdu_len = 0;
-  // decode the length of the pdu (inclusive BVLC)
-  (void) decode_unsigned16(&pdu[2], &npdu_len);
-  // packet contains only BVLC or too large
-  if ((npdu_len < 4) || (npdu_len > (MAX_MPDU-4))) {
-        return;
-  }
-  // subtract the BVLC header length
-  npdu_len -= 4;
-
-  //decide depending on the function code of the packet
-  switch (pdu[1]) {
-    // see bvlc.c - bvlc_receive() for other function codes
-    case BVLC_ORIGINAL_UNICAST_NPDU:
-      // shift the buffer
-      // he also copies source address (needed?)
-      for (int i = 0; i < npdu_len; i++) {
-          pdu[i] = pdu[4 + i];
-      }
-      break;
-  }
-
-  if (pdu[0] == BACNET_PROTOCOL_VERSION) {
-    
-    DEVLOG_DEBUG("[CBacnetClientController] decoding...\n");
-    BACNET_ADDRESS dest = { 0 };
-    BACNET_ADDRESS src = { 0 };
-    BACNET_NPDU_DATA npdu_data = { 0 };
-    int apdu_offset = npdu_decode(&pdu[0], &dest, &src, &npdu_data);
-
-    if ((apdu_offset > 0) && (apdu_offset <= npdu_len)) {
-      if ((dest.net == 0) || (dest.net == BACNET_BROADCAST_NETWORK)) {
-          /* only handle the version that we know how to handle */
-          /* and we are not a router, so ignore messages with
-              routing information cause they are not for us */
-          if ((dest.net == BACNET_BROADCAST_NETWORK) &&
-              ((pdu[apdu_offset] & 0xF0) ==
-                  PDU_TYPE_CONFIRMED_SERVICE_REQUEST)) {
-              /* hack for 5.4.5.1 - IDLE */
-              /* ConfirmedBroadcastReceived */
-              /* then enter IDLE - ignore the PDU */
-          } else {
-              // apdu_handler(src, &pdu[apdu_offset],
-              //     (uint16_t) (pdu_len - apdu_offset));
-              switch(pdu[apdu_offset] & 0xF0) {
-                case PDU_TYPE_COMPLEX_ACK: // see apdu.c - apdu_handler() for other types
-                  BACNET_CONFIRMED_SERVICE_ACK_DATA service_ack_data = { 0 };
-                  service_ack_data.segmented_message = (pdu[apdu_offset] & 1<<3) ? true : false;
-                  service_ack_data.more_follows = (pdu[apdu_offset] & 1<<2) ? true : false;
-                  service_ack_data.invoke_id = pdu[apdu_offset+1];
-                  apdu_offset++;
-                  if (service_ack_data.segmented_message) {
-                    service_ack_data.sequence_number = pdu[apdu_offset+1];
-                    apdu_offset++;
-                    service_ack_data.proposed_window_number = pdu[apdu_offset+1];
-                    apdu_offset++;
-                  }
-                  uint8_t service_choice = pdu[apdu_offset+1];
-                  apdu_offset++;
-                  // service_request = &pdu[len];
-                  // service_request_len = apdu_len - (uint16_t) len;
-                  DEVLOG_DEBUG("[CBacnetClientController] Received Complex Acknowledge: segmented_message=%d, more_follows=%d, invoke_id=%d, service_choice=", service_ack_data.segmented_message, service_ack_data.more_follows, service_ack_data.invoke_id);
-                  switch (service_choice){
-                    case SERVICE_CONFIRMED_READ_PROPERTY:
-                      printf("CONFIRMED_READ_PROPERTY\n");
-                  }
-                  break;
-              }
-
-          }
-      }
-    }
-    } else {
-    DEVLOG_DEBUG("[CBacnetClientController] decodeBacnetPacket(): unknown protocol version");
-    }
 }
 
 bool CBacnetClientController::addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *paHandle) {

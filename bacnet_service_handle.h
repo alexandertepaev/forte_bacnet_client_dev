@@ -3,6 +3,7 @@
 
 
 #include <devexec.h>
+#include "bacnet_service_config_fb.h"
 #include <extevhan.h>
 #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_handle.h"
 #include "include/bacnet.h"
@@ -13,10 +14,10 @@ class CBacnetServiceHandle : public forte::core::io::IOHandle, protected CExtern
 private:
   /* data */
 public:
-  CBacnetServiceHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution);
+  CBacnetServiceHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB);
   ~CBacnetServiceHandle();
 
-  virtual int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *my_address, BACNET_ADDRESS *dest) = 0;
+  virtual int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id) = 0;
   virtual void decodeServiceResp(uint8_t *pdu, const uint8_t &len) = 0;
   void fireConfirmationEvent() {
    startNewEventChain(static_cast<forte::core::io::ProcessInterface *>(getObserver()));
@@ -28,6 +29,8 @@ public:
   void setPriority(int paPriority) { };
   int getPriority(void) const { return 0; };
   size_t getIdentifier() const { return 0; };
+
+  CBacnetServiceConfigFB *mConfigFB;
 
   enum EBacnetHandleState{
     e_Idle, e_AwaitingResponse 

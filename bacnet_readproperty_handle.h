@@ -17,9 +17,8 @@ public:
 
   virtual void get(CIEC_ANY &);
 
-  CBacnetServiceConfigFB *mConfigFB;
 
-  int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *my_address, BACNET_ADDRESS *dest);
+  int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id);
   void decodeServiceResp(uint8_t *pdu, const uint8_t &len);
 
 protected:

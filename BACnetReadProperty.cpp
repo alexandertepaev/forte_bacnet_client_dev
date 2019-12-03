@@ -82,7 +82,8 @@ const char* CBacnetReadPropertyConfigFB::init(){
   m_stServiceConfig.mArrayIndex = BACNET_ARRAY_ALL;
   m_stServiceConfig.dummy_value = 567;
 
-  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, SERVICE_CONFIRMED_READ_PROPERTY, this);   
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, SERVICE_CONFIRMED_READ_PROPERTY, this);
+     
   clictr->addHandle(desc); 
 
   return 0;

@@ -1,6 +1,6 @@
 #include "bacnet_readproperty_handle.h"
 
-CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution), mConfigFB(paServiceConfigFB)
+CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution, paServiceConfigFB)
 {
   CBacnetReadPropertyConfigFB::ServiceConfig mServiceConfig = static_cast<CBacnetReadPropertyConfigFB *>(paServiceConfigFB)->m_stServiceConfig;
   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] CBacnetReadPropertyHandle(): Initializing ReadProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, dummy_value=%d\n",mServiceConfig.mDeviceId, mServiceConfig.mObjectType, mServiceConfig.mObjectId, mServiceConfig.mObjectProperty, mServiceConfig.mArrayIndex, mServiceConfig.dummy_value);
@@ -28,7 +28,9 @@ void CBacnetReadPropertyHandle::get(CIEC_ANY &paValue) {
   }
 }
 
-int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *my_address, BACNET_ADDRESS *dest) {
+int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id) {
+
+  //BACNET_ADDRESS *my_address, BACNET_ADDRESS *dest
 
   int pdu_len = 4;
   BACNET_NPDU_DATA npdu_data;
@@ -41,13 +43,26 @@ int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &inv
   data.object_property = static_cast<BACNET_PROPERTY_ID>(mServiceConfig.mObjectProperty);
   data.array_index = mServiceConfig.mArrayIndex;
 
+
+  // get target add from addr cache
   unsigned max_apdu = 0;
-  BACNET_ADDRESS Target_Address;
-  bool found = address_bind_request(mServiceConfig.mDeviceId, &max_apdu, &Target_Address); //TODO - no need to do it every time, can be done one time during initialization of the handle
+  BACNET_ADDRESS dest;
+  bool found = address_bind_request(mServiceConfig.mDeviceId, &max_apdu, &dest); //TODO - no need to do it every time, can be done one time during initialization of the handle
   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] encodeServiceReq(): Address found=%d\n", found);
 
+  // get my addr -- better way? -- init one time during the start up? 
+  CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
+  BACNET_ADDRESS my_address;
+  memcpy(&my_address.mac[0], &controller->mMyNetworkAddress.sin_addr.s_addr, 4);
+  memcpy(&my_address.mac[4], &controller->mMyNetworkAddress.sin_port, 2);
+  my_address.mac_len = (uint8_t) 6;
+  my_address.net = 0;
+  my_address.len = 0;
+
+
   //pdu_len += npdu_encode_pdu(&pdu[pdu_len], dest, my_address, &npdu_data);
-  pdu_len += npdu_encode_pdu(&pdu[pdu_len], &Target_Address, my_address, &npdu_data);
+  pdu_len += npdu_encode_pdu(&pdu[pdu_len], &dest, &my_address, &npdu_data);
+  //pdu_len += npdu_encode_pdu(&pdu[pdu_len], &Target_Address, my_address, &npdu_data);
 
    DEVLOG_DEBUG("[CBacnetReadPropertyHandle] encodeServiceReq(): Encoding ReadProperty request with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, dummy_value=%d, invoke_id=%d\n",mServiceConfig.mDeviceId, mServiceConfig.mObjectType, mServiceConfig.mObjectId, mServiceConfig.mObjectProperty, mServiceConfig.mArrayIndex, mServiceConfig.dummy_value, invoke_id);
 
