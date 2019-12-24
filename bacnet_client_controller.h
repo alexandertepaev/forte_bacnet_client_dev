@@ -66,12 +66,18 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     void decodeBacnetBVLC(uint8_t *pdu, uint16_t len, sockaddr_in *src);
 
     sockaddr_in getMyNetworkAddress();
-
     sockaddr_in mMyNetworkAddress;
+
+    bool initNetworkAddresses();
+    struct in_addr mLocalAddr;
+    struct in_addr mBroadcastAddr;
+    uint16_t mPort;
 
     bool addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *handle);
 
     bool removeInvokeIDHandlePair(const uint8_t &paInvokeID);
+
+    void initDone(); // better naming?
 
   protected:
     const char* init(); // Initialize the device object (call it's init function)
@@ -116,6 +122,27 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     typedef std::map<uint8_t, CBacnetServiceHandle *> TInvokeIDHandleMap;
     TInvokeIDHandleMap mInvokeIDsHandles; // TODO - better naiming
 
-    // address list (maybe bacnet stack has such a struct already) 
+    // states
+    enum EBacnetClientControllerState {
+      e_Init, e_AddressFetch, e_COVSubscription, e_Operating 
+    };
+    EBacnetClientControllerState m_eClienControllerState;
+
+    // addr list
+    struct SBacnetAddressListEntry {
+      bool mAddrInitFlag;
+      uint32_t mDeviceId;
+      sockaddr_in addr;
+    };
+
+    typedef CSinglyLinkedList<SBacnetAddressListEntry *> TBacnetAddrList;
+
+    TBacnetAddrList *pmAddrList;
+
+    bool addAddrListEntry(uint32_t device_id);
+
+    bool encodeWhoIs(uint32_t device_id, uint8_t *buffer);
+
+    
 };
 #endif

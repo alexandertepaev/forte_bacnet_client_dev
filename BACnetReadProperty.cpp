@@ -47,7 +47,24 @@ void CBacnetReadPropertyConfigFB::executeEvent(int pa_nEIID){
     DEVLOG_DEBUG("[BACnetReadPropertyConfigFB] init event\n");
     const char* const error = init();
     QO() = error == 0;
-    STATUS() = scmOK;    
+    STATUS() = scmOK;
+
+    if(BACnetAdapterOut().getPeer() == 0) {
+      // backpropagate inito
+      BACnetAdapterIn().QO() = QO();
+      sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
+    } else {
+      // forward init
+      BACnetAdapterOut().MasterId() = BACnetAdapterIn().MasterId();
+      BACnetAdapterOut().Index() = (TForteUInt16) (BACnetAdapterIn().Index() + 1);
+      BACnetAdapterOut().QI() = BACnetAdapterIn().QI();
+      sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, BACnetAdapter::scm_nEventINITID);
+    }
+
+  } else if(BACnetAdapterOut().INITO() == pa_nEIID) {
+     // backpropagate inito
+      BACnetAdapterIn().QO() = BACnetAdapterOut().QO() && QO();
+      sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
   }
 }
 
@@ -55,7 +72,7 @@ void CBacnetReadPropertyConfigFB::executeEvent(int pa_nEIID){
 /*
 
 *** TODO: move this somewhere?
-
+    functions that return bacnet libs encodings
 */
 uint32_t getObjectType(CIEC_WSTRING paObjectType){
   if(paObjectType == "ANALOG_OUTPUT"){
@@ -81,6 +98,8 @@ const char* CBacnetReadPropertyConfigFB::init(){
   m_stServiceConfig.mObjectProperty = getObjectProperty(ObjectProperty());
   m_stServiceConfig.mArrayIndex = BACNET_ARRAY_ALL;
   m_stServiceConfig.dummy_value = 567;
+
+  clictr->addAddrListEntry(m_stServiceConfig.mDeviceId);
 
   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, SERVICE_CONFIRMED_READ_PROPERTY, this);
      

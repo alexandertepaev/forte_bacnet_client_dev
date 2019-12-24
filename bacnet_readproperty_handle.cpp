@@ -53,8 +53,10 @@ int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &inv
   // get my addr -- better way? -- init one time during the start up? 
   CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
   BACNET_ADDRESS my_address;
-  memcpy(&my_address.mac[0], &controller->mMyNetworkAddress.sin_addr.s_addr, 4);
-  memcpy(&my_address.mac[4], &controller->mMyNetworkAddress.sin_port, 2);
+  // memcpy(&my_address.mac[0], &controller->mMyNetworkAddress.sin_addr.s_addr, 4);
+  // memcpy(&my_address.mac[4], &controller->mMyNetworkAddress.sin_port, 2);
+  memcpy(&my_address.mac[0], &controller->mLocalAddr.s_addr, 4);
+  memcpy(&my_address.mac[4], &controller->mPort, 2);
   my_address.mac_len = (uint8_t) 6;
   my_address.net = 0;
   my_address.len = 0;

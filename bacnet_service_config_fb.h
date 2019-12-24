@@ -13,6 +13,7 @@ public:
   CBacnetServiceConfigFB(/* args */);
   ~CBacnetServiceConfigFB();
 
+  // rework
   struct ServiceConfig {
     uint32_t mDeviceId;
     uint32_t mObjectType;

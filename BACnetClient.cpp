@@ -49,6 +49,7 @@ void CBacnetClientConfigFB::executeEvent(int pa_nEIID){
 
   if (BACnetAdapterOut().INITO() == pa_nEIID) {
     IOConfigFBController::onStartup();
+    static_cast<CBacnetClientController *>(getDeviceController())->initDone();
   }
     
 }
@@ -62,12 +63,12 @@ forte::core::io::IODeviceController* CBacnetClientConfigFB::createDeviceControll
 }
 
 void CBacnetClientConfigFB::setConfig(){
-  DEVLOG_DEBUG("[CBacnetClientConfigFB] setConfig(): Setting client controller configuration\n");
+  DEVLOG_DEBUG("[CBacnetClientConfigFB] setConfig(): Setting client controller's configuration parameters\n");
   CBacnetClientController::SBacnetClientControllerConfig config;
   config.nPortNumber = Port();
   config.nDeviceObjID = DeviceObjectID();
   config.sDeviceObjName = DeviceObjectName().getValue();
-  config.sPathToAddrFile = PathToAddrFile().getValue();
+  config.sPathToAddrFile = PathToAddrFile().getValue(); // TODO - maybe not needed? We want to use Who-is/I-Am
   getDeviceController()->setConfig(&config);
 }
 
@@ -76,6 +77,7 @@ void CBacnetClientConfigFB::onStartup(){
   DEVLOG_DEBUG("[CBacnetClientConfigFB] onStartup()\n");
   //check if we have adapter peers 
   if (BACnetAdapterOut().getPeer() == 0) {
+    static_cast<CBacnetClientController *>(getDeviceController())->initDone();
     return IOConfigFBController::onStartup();
   }
   // pass BACnetAdatper.INIT event
