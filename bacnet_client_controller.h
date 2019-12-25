@@ -132,7 +132,7 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     struct SBacnetAddressListEntry {
       bool mAddrInitFlag;
       uint32_t mDeviceId;
-      sockaddr_in addr;
+      struct in_addr addr;
     };
 
     typedef CSinglyLinkedList<SBacnetAddressListEntry *> TBacnetAddrList;
@@ -141,7 +141,7 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
 
     bool addAddrListEntry(uint32_t device_id);
 
-    bool encodeWhoIs(uint32_t device_id, uint8_t *buffer);
+    int encodeWhoIs(uint32_t device_id, uint8_t *buffer);
 
     
 };
