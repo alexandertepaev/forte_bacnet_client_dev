@@ -43,11 +43,6 @@ const char* CBacnetClientController::init() {
   //addr list
   pmAddrList = new TBacnetAddrList();
   
-  // // get my address
-  // mMyNetworkAddress = getMyNetworkAddress();
-  // // get broadcast address
-  // mBroadcastAddress = getBroadcastNetworkAddress();
-
   // init addresses
   initNetworkAddresses();
 
@@ -62,7 +57,8 @@ const char* CBacnetClientController::init() {
   return 0;
 }
 
-#define NETWORK_IFACE_NAME "enp0s25"
+//#define NETWORK_IFACE_NAME "enp0s25"
+#define NETWORK_IFACE_NAME "wlp4s0"
 sockaddr_in CBacnetClientController::getMyNetworkAddress() {
   sockaddr_in my_addr = {};
   ifreq ifr = {};
@@ -138,157 +134,155 @@ CBacnetClientController::TSocketDescriptor CBacnetClientController::openBacnetIP
   }
 }
 
+int CBacnetClientController::sendPacket(uint8_t *buffer, uint16_t len, struct in_addr dest_addr, uint16_t dest_port) {
+  struct sockaddr_in bvlc_dest;
+  bvlc_dest.sin_family = AF_INET;
+  bvlc_dest.sin_addr.s_addr = dest_addr.s_addr;
+  bvlc_dest.sin_port = htons(dest_port);
+  memset(bvlc_dest.sin_zero, 0, 8);
+
+  int send_len = sendto(mBacnetSocket, (char *) buffer, len, 0, (struct sockaddr *) &bvlc_dest, sizeof(struct sockaddr));
+  if(send_len > 0){
+    DEVLOG_DEBUG("[CBacnetClientController] Sent packet of length %d: ", send_len);
+    for(int i = 0; i<send_len; i++){
+      printf("%02X ", buffer[i]);
+    }
+    printf("\n");
+    // addInvokeIDHandlePair(invoke_id, handle);
+  } else {
+    DEVLOG_DEBUG("[CBacnetClientController] sendto() failed");
+  }
+  return send_len;
+}
+
+int CBacnetClientController::receivePacket(uint8_t *buffer, size_t buffer_size, uint16_t timeout, sockaddr_in &src) {
+  struct timeval select_timeout;
+  select_timeout.tv_sec = 0;
+  select_timeout.tv_usec = 1000 * timeout; // 100 ms timeout on receive - non-blocking recv
+  fd_set read_fds;
+  FD_ZERO(&read_fds);
+  FD_SET(mBacnetSocket, &read_fds);
+
+  if(select(mBacnetSocket+1, &read_fds, NULL, NULL, &select_timeout) > 0){
+    //sockaddr_in src;
+    socklen_t srcLen = sizeof(src);
+    int rcv_retval = recvfrom(mBacnetSocket, buffer, buffer_size, 0, (sockaddr *) &src, &srcLen);
+    if(rcv_retval > 0) {
+      DEVLOG_DEBUG("[CBacnetClientController] Received packet of length %d: ", rcv_retval);
+      for(int i=0; i<rcv_retval; i++){
+        printf("%02X ", buffer[i]);
+      }
+      printf("\n");
+    } else  {
+      DEVLOG_DEBUG("[CBacnetClientController] recvfrom() failed\n");
+    }
+
+    // msg from myself
+    if(src.sin_addr.s_addr == mLocalAddr.s_addr && src.sin_port == htons(mPort)) { 
+      return 0;
+    } else {
+      // it's all good
+      return rcv_retval;
+    }
+  }
+  return -1;
+}
+
+void CBacnetClientController::getAddressByDeviceId(uint32_t paDeviceId, struct in_addr &paDeviceAddr, uint16_t &paDeviceAddrPort) {
+  //inet_aton("169.254.95.92", &paDeviceAddr); // when doing it thorough ethernet
+  inet_aton("192.168.1.202", &paDeviceAddr);
+  paDeviceAddrPort = 0xBAC0; 
+}
+
+BACNET_ADDRESS CBacnetClientController::ipToBacnetAddress(struct in_addr paDeviceAddr, uint16_t paPort, bool paBroadcastAddr){
+  BACNET_ADDRESS ret_val;
+  ret_val.mac_len = (uint8_t) 6;
+  memcpy(&ret_val.mac[0], &paDeviceAddr, 4);
+  memcpy(&ret_val.mac[4], &paPort, 2);
+  ret_val.net = paBroadcastAddr ? BACNET_BROADCAST_NETWORK : 0;
+  ret_val.len = 0; // no SLEN
+  memset(ret_val.adr, 0, MAX_MAC_LEN); // no SADR
+
+  return ret_val;
+}
+
 void CBacnetClientController::runLoop() {
   DEVLOG_DEBUG("[CBacnetClientController] runLoop(): Starting controller loop\n");
   while(isAlive()) {
 
     if(m_eClienControllerState == e_AddressFetch) {
+
       TBacnetAddrList::Iterator itEnd = pmAddrList->end();
-      for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it){
-        //send
-        DEVLOG_DEBUG("[CBacnetClientController] Sending WHO-IS to DeviceID %d\n", (*it)->mDeviceId);
+      for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it) {
         uint8_t pdu[MAX_MPDU];
         uint16_t len = encodeWhoIs((*it)->mDeviceId, pdu);
-        struct sockaddr_in bvlc_dest = { 0 };
-        bvlc_dest.sin_family = AF_INET;
-        bvlc_dest.sin_addr.s_addr = mBroadcastAddr.s_addr;
-        bvlc_dest.sin_port = htons(mPort);
-        memset(bvlc_dest.sin_zero, 0, 8);
-        int send_len = sendto(mBacnetSocket, (char *) pdu, len, 0, (struct sockaddr *) &bvlc_dest, sizeof(struct sockaddr));
-        
-        if(send_len > 0) { 
-          DEVLOG_DEBUG("[CBacnetClientController] Sent WHO-IS packet of length %d: ", send_len);
-          for(int i = 0; i<len; i++){
-              printf("%02X ", pdu[i]);
-            }
-          printf("\n");
-        } else {
-          DEVLOG_DEBUG("[CBacnetClientController] Sending WHO-IS failed\n");
-        }
 
-        //receive, but ingnore my messages
+        sendPacket(pdu, len, mBroadcastAddr, mPort);
+
+        uint8_t npdu[MAX_PDU];
+        sockaddr_in src;
         while(true) {
-          struct timeval select_timeout;
-          select_timeout.tv_sec = 0;
-          select_timeout.tv_usec = 1000 * 100; // 100 ms timeout on receive - non-blocking recv
-          fd_set read_fds;
-          FD_ZERO(&read_fds);
-          FD_SET(mBacnetSocket, &read_fds);
-          if(select(mBacnetSocket+1, &read_fds, NULL, NULL, &select_timeout) > 0){
-            uint8_t npdu[MAX_PDU];
-            sockaddr_in src;
-            socklen_t srcLen = sizeof(src);
-            int rcv_retval = recvfrom(mBacnetSocket, npdu, sizeof(npdu), 0, (sockaddr *) &src, &srcLen);
-            if(rcv_retval > 0) {
-              if((src.sin_addr.s_addr != mLocalAddr.s_addr || htons(src.sin_port) != mPort)){
-                DEVLOG_DEBUG("[CBacnetClientController] Received packet of length %d: ", rcv_retval);
-                for(int i=0; i<rcv_retval; i++){
-                  printf("%02X ", npdu[i]);
-                }
-                printf("\n");
-                //DEVLOG_DEBUG("From %s:%04X\n", inet_ntoa(src.sin_addr), src.sin_port);
-                // TODO - decode packet here
-                decodeBacnetBVLC(npdu, rcv_retval, &src);
-                break;
-              }
-            } else {
-              DEVLOG_DEBUG("[CBacnetClientController] recvfrom() failed\n");
-              break;
-            }
+          int rcv_retval = receivePacket(npdu, sizeof(npdu), 500, src);
+          if(rcv_retval > 0) {
+            // normal i-am
+            decodeBacnetBVLC(npdu, rcv_retval, &src);
+            break;
+          } else if(rcv_retval == 0) {
+            // message from myself - broadcast loopback
+            DEVLOG_DEBUG("Message from myself!\n");
           } else {
-            DEVLOG_DEBUG("[CBacnetClientController] select() timeout\n");
+            // timedout, no such device on the network
+            DEVLOG_DEBUG("Timeout!\n");
             break;
           }
         }
-
       }
-
-
+      
       // FIXME -- skip state
       m_eClienControllerState = e_COVSubscription;      
 
     } else if (m_eClienControllerState == e_COVSubscription) {
 
       // FIXME -- skip state
-      //m_eClienControllerState = e_Operating;  
+      m_eClienControllerState = e_Operating;  
 
     } else if (m_eClienControllerState == e_Operating) {
       // sending from ringbuffer
       if(m_nSendRingbufferSize != 0) {
+        
+        //consume from ringbuffer
         CBacnetServiceHandle *handle = consumeFromRingbuffer();
-        uint8_t pdu[MAX_MPDU];
-        BACNET_ADDRESS dst;
-        dst.mac_len = 6;
-        dst.mac[0] = 169;
-        dst.mac[1] = 254;
-        dst.mac[2] = 95;
-        dst.mac[3] = 92;
-        dst.mac[4] = 0xBA;
-        dst.mac[5] = 0xC0;
-        dst.net = 0;
-        dst.len = 0;
 
-        BACNET_ADDRESS my_adr;
-        my_adr.mac_len = 6;
-        my_adr.mac[0] = 169;
-        my_adr.mac[1] = 254;
-        my_adr.mac[2] = 95;
-        my_adr.mac[3] = 91;
-        my_adr.mac[4] = 0xBA;
-        my_adr.mac[5] = 0xC0;
-        my_adr.net = 0;
-        my_adr.len = 0;
+        // get target device id and address
+        struct in_addr dest_addr;
+        uint16_t dest_port;
+        getAddressByDeviceId(handle->mConfigFB->m_stServiceConfig->mDeviceId, dest_addr, dest_port);
+        DEVLOG_DEBUG("Destenation address %s:%04X\n", inet_ntoa(dest_addr), dest_port);
 
+        // get next free invoke id
         uint8_t invoke_id = 1; // TODO get free invoke id
 
-        //int pdu_len = handle->encodeServiceReq(pdu, invoke_id, &my_adr, &dst);
-        int pdu_len = handle->encodeServiceReq(pdu, invoke_id);
+        // encode bacnet packet
+        uint8_t pdu[MAX_MPDU];
+        BACNET_ADDRESS dest = ipToBacnetAddress(dest_addr, dest_port, false);
+        BACNET_ADDRESS src = ipToBacnetAddress(mLocalAddr, mPort, false);
 
-        struct sockaddr_in bvlc_dest;
-        bvlc_dest.sin_family = AF_INET;
-        memcpy(&bvlc_dest.sin_addr.s_addr, &dst.mac[0], 4);
-        memcpy(&bvlc_dest.sin_port, &dst.mac[4], 2);
-        memset(bvlc_dest.sin_zero, 0, 8);
+        int pdu_len = handle->encodeServiceReq(pdu, invoke_id, &dest, &src);
         
-        int send_len = sendto(mBacnetSocket, (char *) pdu, pdu_len, 0, (struct sockaddr *) &bvlc_dest, sizeof(struct sockaddr));
-        if(send_len > 0){
-          DEVLOG_DEBUG("[CBacnetClientController] Sent packet of length %d: ", send_len);
-          for(int i = 0; i<pdu_len; i++){
-            printf("%02X ", pdu[i]);
-          }
-          printf("\n");
-
+        // send it and if send was successful, add invokeid:handle pair
+        if( sendPacket(pdu, pdu_len, dest_addr, dest_port) > 0) {
           addInvokeIDHandlePair(invoke_id, handle);
-        } else {
-          DEVLOG_DEBUG("[CBacnetClientController] sendto() failed");
         }
+
       }
 
-
-      // receiving response or COV reports
-      struct timeval select_timeout;
-      select_timeout.tv_sec = 0;
-      select_timeout.tv_usec = 1000 * 100; // 100 ms timeout on receive - non-blocking recv
-      fd_set read_fds;
-      FD_ZERO(&read_fds);
-      FD_SET(mBacnetSocket, &read_fds);
-      if(select(mBacnetSocket+1, &read_fds, NULL, NULL, &select_timeout) > 0){
-        uint8_t npdu[MAX_PDU];
-        sockaddr_in src;
-        socklen_t srcLen = sizeof(src);
-        int rcv_retval = recvfrom(mBacnetSocket, npdu, sizeof(npdu), 0, (sockaddr *) &src, &srcLen);
-        if(rcv_retval > 0) {
-          DEVLOG_DEBUG("[CBacnetClientController] Received packet of length %d: ", rcv_retval);
-          for(int i=0; i<rcv_retval; i++){
-            printf("%02X ", npdu[i]);
-          }
-          printf("\n");
-          decodeBacnetBVLC(npdu, rcv_retval, &src);
-          //decodeBacnetPacket(npdu, rcv_retval);
-        } else  {
-          DEVLOG_DEBUG("[CBacnetClientController] recvfrom() failed\n");
-        }
+      uint8_t npdu[MAX_PDU];
+      sockaddr_in src;
+      int rcv_retval = receivePacket(npdu, sizeof(npdu), 100, src);
+      if(rcv_retval > 0){
+        decodeBacnetBVLC(npdu, rcv_retval, &src);
       }
+      
     }
     
   }
@@ -467,7 +461,8 @@ bool CBacnetClientController::addAddrListEntry(uint32_t device_id) {
   SBacnetAddressListEntry *newElement = new SBacnetAddressListEntry();
   newElement->mDeviceId = device_id;
   newElement->mAddrInitFlag = false;
-  memset(&newElement->addr, 0, sizeof(struct in_addr));
+  memset(&newElement->mAddr, 0, sizeof(struct in_addr));
+  newElement->mPort = 0;
   pmAddrList->pushBack(newElement);
 
   DEVLOG_DEBUG("[CBacnetClientController] addAddrListEntry() -- added new entry\n");
@@ -477,22 +472,22 @@ bool CBacnetClientController::addAddrListEntry(uint32_t device_id) {
 int CBacnetClientController::encodeWhoIs(uint32_t device_id, uint8_t *buffer){
 
   //get broadcast addr
-  BACNET_ADDRESS broadcast_addr;
-  broadcast_addr.mac_len = 6;
-  memcpy(&broadcast_addr.mac[0], &mBroadcastAddr, 4);
-  memcpy(&broadcast_addr.mac[4], &mPort, 2);
-  broadcast_addr.net = BACNET_BROADCAST_NETWORK;
-  broadcast_addr.len = 0; // no SLEN
-  memset(broadcast_addr.adr, 0, MAX_MAC_LEN); // no SADR
+  BACNET_ADDRESS broadcast_addr = ipToBacnetAddress(mBroadcastAddr, mPort, true);
+  // broadcast_addr.mac_len = 6;
+  // memcpy(&broadcast_addr.mac[0], &mBroadcastAddr, 4);
+  // memcpy(&broadcast_addr.mac[4], &mPort, 2);
+  // broadcast_addr.net = BACNET_BROADCAST_NETWORK;
+  // broadcast_addr.len = 0; // no SLEN
+  // memset(broadcast_addr.adr, 0, MAX_MAC_LEN); // no SADR
 
   //get local addr
-  BACNET_ADDRESS local_addr;
-  local_addr.mac_len = 6;
-  memcpy(&local_addr.mac[0], &mLocalAddr, 4);
-  memcpy(&local_addr.mac[4], &mPort, 2);
-  local_addr.net = 0; // local
-  local_addr.len = 0; // no SLEN
-  memset(local_addr.adr, 0, MAX_MAC_LEN); // no SADR
+  BACNET_ADDRESS local_addr = ipToBacnetAddress(mLocalAddr, mPort, false);
+  // local_addr.mac_len = 6;
+  // memcpy(&local_addr.mac[0], &mLocalAddr, 4);
+  // memcpy(&local_addr.mac[4], &mPort, 2);
+  // local_addr.net = 0; // local
+  // local_addr.len = 0; // no SLEN
+  // memset(local_addr.adr, 0, MAX_MAC_LEN); // no SADR
 
   // encode npdu control data: no reply expected, normal priority
   BACNET_NPDU_DATA npdu_data;

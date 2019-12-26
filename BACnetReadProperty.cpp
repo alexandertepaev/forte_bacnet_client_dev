@@ -92,14 +92,9 @@ const char* CBacnetReadPropertyConfigFB::init(){
   forte::core::io::IOConfigFBMultiMaster *master = forte::core::io::IOConfigFBMultiMaster::getMasterById(BACnetAdapterIn().MasterId());
   CBacnetClientController *clictr = static_cast<CBacnetClientController *>(master->getDeviceController());
 
-  m_stServiceConfig.mDeviceId = DeviceID();
-  m_stServiceConfig.mObjectType = getObjectType(ObjectType());
-  m_stServiceConfig.mObjectId = ObjectID();
-  m_stServiceConfig.mObjectProperty = getObjectProperty(ObjectProperty());
-  m_stServiceConfig.mArrayIndex = BACNET_ARRAY_ALL;
-  m_stServiceConfig.dummy_value = 567;
+  m_stServiceConfig = new ServiceConfig(DeviceID(), getObjectType(ObjectType()), ObjectID(), getObjectProperty(ObjectProperty()), BACNET_ARRAY_ALL);
 
-  clictr->addAddrListEntry(m_stServiceConfig.mDeviceId);
+  clictr->addAddrListEntry(m_stServiceConfig->mDeviceId);
 
   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, SERVICE_CONFIRMED_READ_PROPERTY, this);
      

@@ -16,9 +16,9 @@ public:
   ~CBacnetReadPropertyHandle();
 
   virtual void get(CIEC_ANY &);
+  
+  int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src);
 
-
-  int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id);
   void decodeServiceResp(uint8_t *pdu, const uint8_t &len);
 
 protected:

@@ -104,20 +104,20 @@ public:
 
 
   FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetReadPropertyConfigFB, forte::core::io::IOConfigFBBase) {
-    m_stServiceConfig.mDeviceId = 0;
-    m_stServiceConfig.mObjectType = 0;
-    m_stServiceConfig.mObjectId = 0;
-    m_stServiceConfig.mObjectProperty = 0;
-    m_stServiceConfig.mArrayIndex = 0;
   };
 
   virtual ~CBacnetReadPropertyConfigFB(){};
 
-  struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
-    uint32_t dummy_value; // This way we can add new field to the config
-  };
+  /*  adding new config fields
+    struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
+      uint32_t dummy_value;
+      
+      ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paDummyValue) :
+      CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId, paObjectProperty, paArrayIndex), dummy_value(paDummyValue) {
 
-  ServiceConfig m_stServiceConfig;
+      };
+    };
+  */
 
 
 };
