@@ -53,14 +53,15 @@ int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &inv
   return pdu_len;
 }
 
-void CBacnetReadPropertyHandle::decodeServiceResp(uint8_t *pdu, const uint8_t &len) {
-  if(pdu[0] != SERVICE_CONFIRMED_READ_PROPERTY) {
-    return;
-  }
+void CBacnetReadPropertyHandle::decodeServiceResp(uint8_t *pdu, const uint32_t &len) {
+  // if(pdu[0] != SERVICE_CONFIRMED_READ_PROPERTY) {
+  //   return;
+  // }
   
   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Decoding APDU of length: %d\n", len);
   BACNET_READ_PROPERTY_DATA data;
-  int rp_len = rp_ack_decode_service_request(&pdu[1], len-1, &data);
+  // int rp_len = rp_ack_decode_service_request(&pdu[1], len-1, &data);
+  int rp_len = rp_ack_decode_service_request(&pdu[3], len-3, &data);
 
   if(rp_len > 0 && data.object_type == static_cast<BACNET_OBJECT_TYPE>(mConfigFB->m_stServiceConfig->mObjectType) &&
                    data.object_instance == mConfigFB->m_stServiceConfig->mObjectId &&

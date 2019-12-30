@@ -1,6 +1,6 @@
 #include "bacnet_client_controller.h"
 
-CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceMultiController(paDeviceExecution), m_nControllerID(id), m_nSendRingbufferHeadIndex(0), m_nSendRingbufferSize(0), m_nSendRingbufferTailIndex(0), pmObjectList(0), pmServiceList(0), mBacnetSocket(0), m_eClienControllerState(e_Init), pmAddrList(0)
+CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceMultiController(paDeviceExecution), m_nControllerID(id), m_nSendRingbufferHeadIndex(0), m_nSendRingbufferSize(0), m_nSendRingbufferTailIndex(0), pmObjectList(0), pmServiceList(0), mBacnetSocket(0), m_eClienControllerState(e_Init), pmAddrList(0), invoke_id(0)
 {
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
   
@@ -16,21 +16,11 @@ CBacnetClientController::~CBacnetClientController()
 }
 
 void CBacnetClientController::setConfig(Config* paConfig) {
-  DEVLOG_DEBUG("[CBacnetClientController] setConfig(): Client controller's configuration parameters set\n");
   m_stConfig = *static_cast<SBacnetClientControllerConfig *>(paConfig);
-  //TODO - addresses (either parse address file or do nothing) addresses - list of "address entry" objects
-
-  // DEVLOG_DEBUG("[CBacnetClientController] CliCtrl config - Port=%d DeviceObjectID=%d DeviceObjectName=%s PathToAddrFile=%s\n", m_nPortNumber, mDeviceObjectDecsriptor->objectId, mDeviceObjectDecsriptor->objectName, cfg->sPathToAddrFile);
+  DEVLOG_DEBUG("[CBacnetClientController] setConfig(): Client controller's configuration parameters set\n");
 }
 
-// Initialie client controller
-// - initialize object list
-// - initialize device object and push it to the list 
-// - parse addr file and create address bindings
-// - initialize ringbuffer of outgoing messages
-// - ...
-// - open socket
-//
+
 const char* CBacnetClientController::init() {
   // object list
   pmObjectList = new TBacnetObjectList();
@@ -49,27 +39,14 @@ const char* CBacnetClientController::init() {
   // open socket
   mBacnetSocket = openBacnetIPSocket();
   
-  // DEVLOG_DEBUG("[CBacnetClientController] init(): Opened BACnet client UDP socket %s:%04X, BroadcastAddr: %s\n", inet_ntoa(mMyNetworkAddress.sin_addr), ntohs(mMyNetworkAddress.sin_port), inet_ntoa(mBroadcastAddress.sin_addr));
   DEVLOG_DEBUG("[CBacnetClientController] init(): Opened BACnet client UDP socket %s:%04X\n", inet_ntoa(mLocalAddr), mPort);
-
-  address_init(); // TODO - maybe not needed since we are using Who-Is/I-Am services
   
   return 0;
 }
 
 //#define NETWORK_IFACE_NAME "enp0s25"
 #define NETWORK_IFACE_NAME "wlp4s0"
-sockaddr_in CBacnetClientController::getMyNetworkAddress() {
-  sockaddr_in my_addr = {};
-  ifreq ifr = {};
-  strncpy(ifr.ifr_name, NETWORK_IFACE_NAME, sizeof(ifr.ifr_name));
-  int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-  int rv = ioctl(fd, SIOCGIFADDR, &ifr); // TODO
-  close(fd);
-  my_addr = *((struct sockaddr_in *)&ifr.ifr_addr);
-  my_addr.sin_port = htons(m_stConfig.nPortNumber);
-  return my_addr;
-}
+
 
 bool CBacnetClientController::initNetworkAddresses() {
   ifreq ifr = {};
@@ -190,8 +167,17 @@ int CBacnetClientController::receivePacket(uint8_t *buffer, size_t buffer_size, 
 
 void CBacnetClientController::getAddressByDeviceId(uint32_t paDeviceId, struct in_addr &paDeviceAddr, uint16_t &paDeviceAddrPort) {
   //inet_aton("169.254.95.92", &paDeviceAddr); // when doing it thorough ethernet
-  inet_aton("192.168.1.202", &paDeviceAddr);
-  paDeviceAddrPort = 0xBAC0; 
+  //inet_aton("192.168.1.202", &paDeviceAddr); // wilhelminen
+  //inet_aton("192.168.1.201", &paDeviceAddr); // wilhelminen
+  //inet_aton("192.168.0.171", &paDeviceAddr); // libelle
+  //paDeviceAddrPort = 0xBAC0;
+  TBacnetAddrList::Iterator itEnd = pmAddrList->end();
+  for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it){
+    if((*it)->mDeviceId == paDeviceId) {
+      paDeviceAddr = (*it)->mAddr;
+      paDeviceAddrPort = (*it)->mPort;
+    }
+  }
 }
 
 BACNET_ADDRESS CBacnetClientController::ipToBacnetAddress(struct in_addr paDeviceAddr, uint16_t paPort, bool paBroadcastAddr){
@@ -206,6 +192,12 @@ BACNET_ADDRESS CBacnetClientController::ipToBacnetAddress(struct in_addr paDevic
   return ret_val;
 }
 
+void CBacnetClientController::buildWhoIsAndSend(uint32_t device_id, uint8_t *buffer) {
+  uint16_t len = encodeWhoIs(device_id, buffer);
+  
+  sendPacket(buffer, len, mBroadcastAddr, mPort);
+}
+
 void CBacnetClientController::runLoop() {
   DEVLOG_DEBUG("[CBacnetClientController] runLoop(): Starting controller loop\n");
   while(isAlive()) {
@@ -215,80 +207,182 @@ void CBacnetClientController::runLoop() {
       TBacnetAddrList::Iterator itEnd = pmAddrList->end();
       for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it) {
         uint8_t pdu[MAX_MPDU];
-        uint16_t len = encodeWhoIs((*it)->mDeviceId, pdu);
-
-        sendPacket(pdu, len, mBroadcastAddr, mPort);
-
-        uint8_t npdu[MAX_PDU];
-        sockaddr_in src;
-        while(true) {
-          int rcv_retval = receivePacket(npdu, sizeof(npdu), 500, src);
-          if(rcv_retval > 0) {
-            // normal i-am
-            decodeBacnetBVLC(npdu, rcv_retval, &src);
-            break;
-          } else if(rcv_retval == 0) {
-            // message from myself - broadcast loopback
-            DEVLOG_DEBUG("Message from myself!\n");
-          } else {
-            // timedout, no such device on the network
-            DEVLOG_DEBUG("Timeout!\n");
-            break;
-          }
-        }
+        buildWhoIsAndSend((*it)->mDeviceId, pdu);
       }
       
       // FIXME -- skip state
       m_eClienControllerState = e_COVSubscription;      
 
     } else if (m_eClienControllerState == e_COVSubscription) {
-
+      // receive response or some kind of notification
+      //receiveAndHandle();
       // FIXME -- skip state
       m_eClienControllerState = e_Operating;  
 
     } else if (m_eClienControllerState == e_Operating) {
-      // sending from ringbuffer
-      if(m_nSendRingbufferSize != 0) {
+      
+      /*
+        if ringbuffer
+          elem = getElement
+          buildPacketAndSend(elem)
         
+        receiveAndHandle()
+        
+        --------------
+
+        buildPacketAndSend:
+          getAddressByDeviceId(...);
+          getFreeInvokeId(...);
+          encodePacket(...);
+          sendPacket(...);
+          if(success)
+            addInvokeIDHandlePair;
+
+        --------------
+
+        receiveAndHandle()
+          receivePacket();
+          if(success)
+            decodeNPDU(...);
+            if(success)
+              handleAPDU(...);
+
+        ---------------
+
+        handleAPDU(...)
+          switch(apdu_type)
+            case unconf_req:
+              if(i_am)
+                if not initialized, find conf fb and notify it;
+                update addr info;
+              break;
+            case simple_ack
+              if(wp)
+                handleWPAck;
+              break;
+            case compleck_ack;
+              if(rp)
+                handleRPAck;
+              break;
+        
+        */
+
+      // send from ringbuffer
+      if(m_nSendRingbufferSize != 0) {
         //consume from ringbuffer
         CBacnetServiceHandle *handle = consumeFromRingbuffer();
-
-        // get target device id and address
-        struct in_addr dest_addr;
-        uint16_t dest_port;
-        getAddressByDeviceId(handle->mConfigFB->m_stServiceConfig->mDeviceId, dest_addr, dest_port);
-        DEVLOG_DEBUG("Destenation address %s:%04X\n", inet_ntoa(dest_addr), dest_port);
-
-        // get next free invoke id
-        uint8_t invoke_id = 1; // TODO get free invoke id
-
-        // encode bacnet packet
-        uint8_t pdu[MAX_MPDU];
-        BACNET_ADDRESS dest = ipToBacnetAddress(dest_addr, dest_port, false);
-        BACNET_ADDRESS src = ipToBacnetAddress(mLocalAddr, mPort, false);
-
-        int pdu_len = handle->encodeServiceReq(pdu, invoke_id, &dest, &src);
-        
-        // send it and if send was successful, add invokeid:handle pair
-        if( sendPacket(pdu, pdu_len, dest_addr, dest_port) > 0) {
-          addInvokeIDHandlePair(invoke_id, handle);
-        }
+        buildPacketAndSend(handle);
 
       }
-
-      uint8_t npdu[MAX_PDU];
-      sockaddr_in src;
-      int rcv_retval = receivePacket(npdu, sizeof(npdu), 100, src);
-      if(rcv_retval > 0){
-        decodeBacnetBVLC(npdu, rcv_retval, &src);
-      }
-      
+      // receive response or some kind of notification
+      receiveAndHandle(); 
     }
     
   }
 }
 
- forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceController::HandleDescriptor *handleDescriptor) {
+
+void CBacnetClientController::decodeAndHandleIAm(uint8_t *apdu, const uint32_t &apdu_len, const struct sockaddr_in &src) {
+  uint32_t device_id;
+  int len = iam_decode_service_request(&apdu[2], &device_id, NULL, NULL, NULL);
+  if(len != -1) {
+    DEVLOG_DEBUG("[CBacnetClientController] decodeAndHandleIAm(): Updating addr entry for Device %d, addr %s:%04X\n", device_id, inet_ntoa(src.sin_addr), htons(src.sin_port));
+    TBacnetAddrList::Iterator itEnd = pmAddrList->end();
+    for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it){
+      if((*it)->mDeviceId == device_id) {
+        (*it)->mAddr = src.sin_addr;
+        (*it)->mPort = htons(src.sin_port);
+        if(!(*it)->mAddrInitFlag){
+          // TODO notify config fb in order to update it's status?
+        }
+      }
+    }
+  }
+}
+
+
+uint8_t CBacnetClientController::getNextInvokeID(){
+  uint8_t ret_val = invoke_id;
+  invoke_id = invoke_id == 255 ? 0 : invoke_id+1;
+  return ret_val;
+}
+void CBacnetClientController::buildPacketAndSend(CBacnetServiceHandle *handle) {
+
+  // get target device id and address
+  struct in_addr dest_addr;
+  uint16_t dest_port;
+  getAddressByDeviceId(handle->mConfigFB->m_stServiceConfig->mDeviceId, dest_addr, dest_port);
+  DEVLOG_DEBUG("[CBacnetClientController] buildPAcketAndSend(): Destenation address %s:%04X\n", inet_ntoa(dest_addr), dest_port);
+
+  // get next free invoke id
+  uint8_t invoke_id = getNextInvokeID(); // TODO get free invoke id
+
+  // encode bacnet packet
+  uint8_t pdu[MAX_MPDU];
+  BACNET_ADDRESS dest = ipToBacnetAddress(dest_addr, dest_port, false);
+  BACNET_ADDRESS src = ipToBacnetAddress(mLocalAddr, mPort, false);
+
+  int pdu_len = handle->encodeServiceReq(pdu, invoke_id, &dest, &src);
+
+  // send it and if send was successful, add invokeid:handle pair
+  if( sendPacket(pdu, pdu_len, dest_addr, dest_port) > 0) {
+    addInvokeIDHandlePair(invoke_id, handle);
+  }
+
+}
+
+void CBacnetClientController::receiveAndHandle(){
+  uint8_t npdu[MAX_PDU];
+  sockaddr_in src;
+  int rcv_retval = receivePacket(npdu, sizeof(npdu), 100, src);
+
+  if(rcv_retval > 0){
+    uint8_t service_choice, apdu_type = 0;
+    uint32_t apdu_offset, apdu_len = 0;
+    if(decodeNPDU(npdu, apdu_offset, apdu_len, apdu_type, service_choice)) {
+
+      DEVLOG_DEBUG("[CBacnetClientController] NPDU info: apdu_offset=%d, apdu_len=%d, apdu_type=%02X, service_choice=%02X\n", apdu_offset, apdu_len, apdu_type, service_choice);
+
+      handleAPDU(&npdu[apdu_offset+4], apdu_len, apdu_type, service_choice, src);
+
+    } else {
+        DEVLOG_DEBUG("[CBacnetClientController] decodeNPDU() failed\n");
+    }
+  }
+}
+
+void CBacnetClientController::handleAPDU(uint8_t *apdu, const uint32_t &apdu_len, const uint8_t &apdu_type, const uint8_t &service_choice, const struct sockaddr_in &src) {
+
+  switch (apdu_type)
+  {
+    case PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST:
+      if(service_choice ==  SERVICE_UNCONFIRMED_I_AM){
+        // I-Am -> update addr information
+        DEVLOG_DEBUG("Received I-Am packet\n");
+        decodeAndHandleIAm(apdu, apdu_len, src);
+      }
+        
+      break;
+    
+    case PDU_TYPE_SIMPLE_ACK:
+      if(service_choice == SERVICE_CONFIRMED_WRITE_PROPERTY) {
+        // WriteProperty ack, get invoke id and call handle's decode function
+      }
+      break;
+
+    case PDU_TYPE_COMPLEX_ACK:
+      if(service_choice == SERVICE_CONFIRMED_READ_PROPERTY) {
+        handleRPAck(apdu, apdu_len);
+      }
+      break;
+
+    default:
+      break;
+  }
+
+}
+
+forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceController::HandleDescriptor *handleDescriptor) {
 
   HandleDescriptor *desc = static_cast<CBacnetClientController::HandleDescriptor *>(handleDescriptor);
   switch (desc->mServiceType)
@@ -301,7 +395,7 @@ void CBacnetClientController::runLoop() {
       return 0;
       break;
   }
- }
+}
 
 
 void CBacnetClientController::addSlaveHandle(int index, forte::core::io::IOHandle* handle){
@@ -342,80 +436,84 @@ CBacnetServiceHandle * CBacnetClientController::consumeFromRingbuffer() {
 }
 
 
-void CBacnetClientController::decodeBacnetBVLC(uint8_t *pdu, uint16_t len, sockaddr_in *src) {
-  if (pdu[0] != BVLL_TYPE_BACNET_IP) {
-    return;
+void CBacnetClientController::handleRPAck(uint8_t *apdu, const uint32_t &apdu_len) {
+  uint8_t invoke_id = apdu[1];
+  if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
+    mInvokeIDsHandles[invoke_id]->decodeServiceResp(apdu, apdu_len);
+    removeInvokeIDHandlePair(invoke_id);
   }
+}
 
-  uint16_t npdu_len = 0;
-  // decode the length of the pdu (inclusive BVLC)
-  (void) decode_unsigned16(&pdu[2], &npdu_len);
-  // packet contains only BVLC or too large
-  if ((npdu_len < 4) || (npdu_len > (MAX_MPDU-4))) {
-        return;
-  }
+bool CBacnetClientController::decodeNPDU(uint8_t *pdu, uint32_t &apdu_offset, uint32_t &apdu_len, uint8_t &apdu_type, uint8_t &service_choice) {
+  if (pdu[0] == BVLL_TYPE_BACNET_IP) {
+    /* Bacnet/IP signature check */
+    uint16_t npdu_len;
+    (void) decode_unsigned16(&pdu[2], &npdu_len);
 
-  // substract the BVLC header length
-  npdu_len -= 4;
+    if ((npdu_len >= 4) && (npdu_len <= (MAX_MPDU-4))) { 
+      /* Length of NPDU is OK (including BVLC length) */
 
-  //decide depending on the function code of the packet
-  switch (pdu[1]) {
-     // see bvlc.c - bvlc_receive() for other function codes
-    case BVLC_ORIGINAL_UNICAST_NPDU:
-      if(pdu[4] == BACNET_PROTOCOL_VERSION) {
-        // do not process packets from me
-        // if(src->sin_addr.s_addr != mMyNetworkAddress.sin_addr.s_addr || 
-        //    src->sin_port != mMyNetworkAddress.sin_port) {
-        if(src->sin_addr.s_addr != mLocalAddr.s_addr || 
-           src->sin_port != mPort) {
+      if(pdu[1] == BVLC_ORIGINAL_UNICAST_NPDU || pdu[1] == BVLC_ORIGINAL_BROADCAST_NPDU) {
+        /* For now only handle unicast/broadcast BVLC types */
 
-          // uint8_t invoke_id = pdu[7];
-          // DEVLOG_DEBUG("[CBacnetClientController] decodeBacnetBVLC(): Received supported BACnet Original Unicast NPDU from %s:%04X, InvokeID: %d\n", inet_ntoa(src->sin_addr), ntohs(src->sin_port), invoke_id);
+        if (pdu[4] == BACNET_PROTOCOL_VERSION) {
+          /* Protocol version 0x01 */
 
-          BACNET_ADDRESS bacnet_dest = {};
-          BACNET_ADDRESS bacnet_src = {};
-          BACNET_NPDU_DATA npdu_data = {};
+          BACNET_NPDU_DATA npdu_data = { 0 };
+          BACNET_ADDRESS dest = { 0 };
+          apdu_offset = npdu_decode(&pdu[4], &dest, NULL, &npdu_data);
 
-          int apdu_offset = npdu_decode(pdu, &bacnet_dest, &bacnet_src, &npdu_data);
-          // there is an aplication pdu and it is of the proper length
-          if ((apdu_offset > 0) && (apdu_offset <= npdu_len)) {
-            // message to our network or broadcast message
-            switch(pdu[apdu_offset] & 0xF0) {
-              case PDU_TYPE_COMPLEX_ACK:
-                BACNET_CONFIRMED_SERVICE_ACK_DATA service_ack_data = {};
-                service_ack_data.segmented_message = (pdu[apdu_offset++] & 1<<3) ? true : false;
-                service_ack_data.invoke_id = pdu[apdu_offset++];
-                // for now support only unsegmented messages -- see apdu.c lines 538-545 for segmented messages
-                if (!service_ack_data.segmented_message) {
-                  DEVLOG_DEBUG("[CBacnetClientController] decodeBacnetBVLC(): Received supported BACnet Original Unicast NPDU from %s:%04X, InvokeID: %d\n", inet_ntoa(src->sin_addr), ntohs(src->sin_port), service_ack_data.invoke_id);
+          if(!npdu_data.network_layer_message && (apdu_offset > 0) && (apdu_offset <= npdu_len - 4) 
+              && ((dest.net == 0) || (dest.net == BACNET_BROADCAST_NETWORK))) {
+                /* NOT network layer message, APDU offset is in bounds, NOT routing infromation */
 
-                  // call handles decode function
-                  if(mInvokeIDsHandles.find(service_ack_data.invoke_id) != mInvokeIDsHandles.end()) {
-                    DEVLOG_DEBUG("Found entry: npdu_len=%d, apdu_offset=%d\n", npdu_len, apdu_offset);
-                    // apdu_offset+2: do not pass service_ack_data + invoke_id, len 
-                    mInvokeIDsHandles[service_ack_data.invoke_id]->decodeServiceResp(&pdu[apdu_offset], npdu_len-(apdu_offset-4));
-                    removeInvokeIDHandlePair(service_ack_data.invoke_id);
+                apdu_len = npdu_len-4-apdu_offset;
+                apdu_type = (pdu[apdu_offset+4] & 0xF0);
+
+                if((dest.net != BACNET_BROADCAST_NETWORK) || (apdu_type != PDU_TYPE_CONFIRMED_SERVICE_REQUEST )) {
+
+                  /* NOT confirmed Broadcast (TODO read section 5.4.5.1)*/
+
+
+                  switch (apdu_type)
+                  {
+                    case PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST:
+                      /* I-Am */
+                      service_choice = pdu[apdu_offset+4+1];
+                      if(service_choice < MAX_BACNET_UNCONFIRMED_SERVICE)
+                        return true;
+                      break;
+
+                    case PDU_TYPE_SIMPLE_ACK:
+                      /* WriteProperty acknowledge */
+                      return false;
+                      break;
+
+                    case PDU_TYPE_COMPLEX_ACK:
+                      /* ReadProperty acknowledge and result */
+                      if( !(pdu[apdu_offset+4] & 1<<3) ) {
+                        /* NOT segmented */
+                        service_choice = pdu[apdu_offset+4+2];
+                        if(service_choice == SERVICE_CONFIRMED_READ_PROPERTY)
+                          return true;
+                      }
+                      break;
+
+                    default:
+                      return false;
+                      break;
                   }
-                
+                  
                 }
-              break;
-            }
           }
-        } else {
-          DEVLOG_DEBUG("Message from me - ignoring\n");
         }
       }
-      break;
-
-    case BVLC_ORIGINAL_BROADCAST_NPDU:
-      DEVLOG_DEBUG("Received broadcast PDU\n");
-      break;
-
-        
-
+    }
   }
 
+  return false;
 }
+
 
 bool CBacnetClientController::addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *paHandle) {
   // Check for duplicates
@@ -473,21 +571,9 @@ int CBacnetClientController::encodeWhoIs(uint32_t device_id, uint8_t *buffer){
 
   //get broadcast addr
   BACNET_ADDRESS broadcast_addr = ipToBacnetAddress(mBroadcastAddr, mPort, true);
-  // broadcast_addr.mac_len = 6;
-  // memcpy(&broadcast_addr.mac[0], &mBroadcastAddr, 4);
-  // memcpy(&broadcast_addr.mac[4], &mPort, 2);
-  // broadcast_addr.net = BACNET_BROADCAST_NETWORK;
-  // broadcast_addr.len = 0; // no SLEN
-  // memset(broadcast_addr.adr, 0, MAX_MAC_LEN); // no SADR
 
   //get local addr
   BACNET_ADDRESS local_addr = ipToBacnetAddress(mLocalAddr, mPort, false);
-  // local_addr.mac_len = 6;
-  // memcpy(&local_addr.mac[0], &mLocalAddr, 4);
-  // memcpy(&local_addr.mac[4], &mPort, 2);
-  // local_addr.net = 0; // local
-  // local_addr.len = 0; // no SLEN
-  // memset(local_addr.adr, 0, MAX_MAC_LEN); // no SADR
 
   // encode npdu control data: no reply expected, normal priority
   BACNET_NPDU_DATA npdu_data;

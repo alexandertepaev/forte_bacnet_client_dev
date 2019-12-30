@@ -19,7 +19,7 @@ public:
   
   int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src);
 
-  void decodeServiceResp(uint8_t *pdu, const uint8_t &len);
+  void decodeServiceResp(uint8_t *pdu, const uint32_t &len);
 
 protected:
   virtual void set(const CIEC_ANY &){};

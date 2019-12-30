@@ -18,7 +18,7 @@ public:
   ~CBacnetServiceHandle();
 
   virtual int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src) = 0;
-  virtual void decodeServiceResp(uint8_t *pdu, const uint8_t &len) = 0;
+  virtual void decodeServiceResp(uint8_t *pdu, const uint32_t &len) = 0;
   void fireConfirmationEvent() {
    startNewEventChain(static_cast<forte::core::io::ProcessInterface *>(getObserver()));
   };

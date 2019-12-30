@@ -63,7 +63,18 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
 
     void decodeBacnetPacket(uint8_t *pdu, uint16_t len);
 
-    void decodeBacnetBVLC(uint8_t *pdu, uint16_t len, sockaddr_in *src);
+    /*void decodeBacnetBVLC(uint8_t *pdu, uint16_t len, sockaddr_in *src);
+    int decodeBacnetBVLC_(uint8_t *pdu, uint16_t &npdu_len);
+    int decodeBacnetAPDU_(uint8_t *pdu, uint16_t &apdu_len, uint8_t &apdu_type);*/
+
+    void buildPacketAndSend(CBacnetServiceHandle *handle);
+    void receiveAndHandle();
+    bool decodeNPDU(uint8_t *pdu, uint32_t &apdu_offset, uint32_t &apdu_len, uint8_t &apdu_type, uint8_t &service_choice);
+    void handleAPDU(uint8_t *apdu, const uint32_t &apdu_len, const uint8_t &apdu_type, const uint8_t &service_choice, const struct sockaddr_in &src);
+    void handleRPAck(uint8_t *apdu, const uint32_t &apdu_len);
+
+    void buildWhoIsAndSend(uint32_t device_id, uint8_t *buffer);
+    void decodeAndHandleIAm(uint8_t *apdu, const uint32_t &apdu_len, const struct sockaddr_in &src);
 
     sockaddr_in getMyNetworkAddress();
     sockaddr_in mMyNetworkAddress;
@@ -102,6 +113,10 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
      // list of service handles (TODO change to proper type)
     typedef CSinglyLinkedList<int *> TBacnetServiceHandleList;
     TBacnetServiceHandleList *pmServiceList;
+
+    // invoke id
+    uint8_t invoke_id;
+    uint8_t getNextInvokeID();
 
     //ringbuffer of outgoint messages (TODO change typedef from int to service handles)
     typedef CBacnetServiceHandle *TBacnetServiceHandlePtr;

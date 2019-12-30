@@ -25,5 +25,6 @@
 #include "bip.h"
 #include "bvlc.h"
 #include "whois.h"
+#include "iam.h"
 
 #endif
