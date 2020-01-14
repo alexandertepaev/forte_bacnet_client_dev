@@ -12,6 +12,7 @@ forte_add_sourcefile_hcpp(BACnetWriteProperty)
 forte_add_sourcefile_hcpp(bacnet_service_config_fb)
 forte_add_sourcefile_hcpp(bacnet_service_handle)
 forte_add_sourcefile_hcpp(bacnet_readproperty_handle)
+forte_add_sourcefile_hcpp(bacnet_writeproperty_handle)
 
 forte_add_include_directories( /home/adm1n/Desktop/bachelors_thesis/fordiac/ext_modules/bacnet_client_1.11_dev/bacnet-stack-0.8.6/include/ )
 forte_add_include_directories( /home/adm1n/Desktop/bachelors_thesis/fordiac/ext_modules/bacnet_client_1.11_dev/bacnet-stack-0.8.6/ports/linux/ )

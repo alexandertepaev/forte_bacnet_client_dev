@@ -44,8 +44,8 @@ const char* CBacnetClientController::init() {
   return 0;
 }
 
-//#define NETWORK_IFACE_NAME "enp0s25"
-#define NETWORK_IFACE_NAME "wlp4s0"
+#define NETWORK_IFACE_NAME "enp0s25"
+//#define NETWORK_IFACE_NAME "wlp4s0"
 
 
 bool CBacnetClientController::initNetworkAddresses() {
@@ -166,10 +166,11 @@ int CBacnetClientController::receivePacket(uint8_t *buffer, size_t buffer_size, 
 }
 
 void CBacnetClientController::getAddressByDeviceId(uint32_t paDeviceId, struct in_addr &paDeviceAddr, uint16_t &paDeviceAddrPort) {
-  //inet_aton("169.254.95.92", &paDeviceAddr); // when doing it thorough ethernet
+  inet_aton("169.254.95.92", &paDeviceAddr); // when doing it thorough ethernet
   //inet_aton("192.168.1.202", &paDeviceAddr); // wilhelminen
   //inet_aton("192.168.1.201", &paDeviceAddr); // wilhelminen
   //inet_aton("192.168.0.171", &paDeviceAddr); // libelle
+  //inet_aton("192.168.0.19", &paDeviceAddr); // babushka
   //paDeviceAddrPort = 0xBAC0;
   TBacnetAddrList::Iterator itEnd = pmAddrList->end();
   for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it){
@@ -306,6 +307,7 @@ uint8_t CBacnetClientController::getNextInvokeID(){
   invoke_id = invoke_id == 255 ? 0 : invoke_id+1;
   return ret_val;
 }
+
 void CBacnetClientController::buildPacketAndSend(CBacnetServiceHandle *handle) {
 
   // get target device id and address
@@ -357,8 +359,6 @@ void CBacnetClientController::handleAPDU(uint8_t *apdu, const uint32_t &apdu_len
   {
     case PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST:
       if(service_choice ==  SERVICE_UNCONFIRMED_I_AM){
-        // I-Am -> update addr information
-        DEVLOG_DEBUG("Received I-Am packet\n");
         decodeAndHandleIAm(apdu, apdu_len, src);
       }
         
@@ -366,7 +366,7 @@ void CBacnetClientController::handleAPDU(uint8_t *apdu, const uint32_t &apdu_len
     
     case PDU_TYPE_SIMPLE_ACK:
       if(service_choice == SERVICE_CONFIRMED_WRITE_PROPERTY) {
-        // WriteProperty ack, get invoke id and call handle's decode function
+        handleWPAck(apdu, apdu_len);
       }
       break;
 
@@ -388,7 +388,12 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
   switch (desc->mServiceType)
   {
     case SERVICE_CONFIRMED_READ_PROPERTY:
-      return new CBacnetReadPropertyHandle(this, desc->mDirection, CIEC_ANY::e_DWORD, mDeviceExecution, desc->mServiceConfigFB); // Question: is it better to compose a pdu one single time here and store its value or is it better to compose it every time we want to send the request
+      // FIXME type based on the accessed object params?
+      return new CBacnetReadPropertyHandle(this, desc->mDirection, CIEC_ANY::e_DWORD, mDeviceExecution, desc->mServiceConfigFB); //TODO: is it better to compose a pdu one single time here and store it's value in rom or is it better to compose it every single time we want to send a request
+      break;
+    case SERVICE_CONFIRMED_WRITE_PROPERTY:
+      // FIXME - type based on the accessed object params? 
+      return new CBacnetWritePropertyHandle(this, desc->mDirection, CIEC_ANY::e_DWORD, mDeviceExecution, desc->mServiceConfigFB);
       break;
     default:
       DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Unknown/Unsupported BACnet Service\n");
@@ -435,8 +440,15 @@ CBacnetServiceHandle * CBacnetClientController::consumeFromRingbuffer() {
   return ret;
 }
 
-
 void CBacnetClientController::handleRPAck(uint8_t *apdu, const uint32_t &apdu_len) {
+  uint8_t invoke_id = apdu[1];
+  if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
+    mInvokeIDsHandles[invoke_id]->decodeServiceResp(apdu, apdu_len);
+    removeInvokeIDHandlePair(invoke_id);
+  }
+}
+
+void CBacnetClientController::handleWPAck(uint8_t *apdu, const uint32_t &apdu_len) {
   uint8_t invoke_id = apdu[1];
   if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
     mInvokeIDsHandles[invoke_id]->decodeServiceResp(apdu, apdu_len);
@@ -486,7 +498,9 @@ bool CBacnetClientController::decodeNPDU(uint8_t *pdu, uint32_t &apdu_offset, ui
 
                     case PDU_TYPE_SIMPLE_ACK:
                       /* WriteProperty acknowledge */
-                      return false;
+                      service_choice = pdu[apdu_offset+4+2];
+                      if(service_choice == SERVICE_CONFIRMED_WRITE_PROPERTY)
+                        return true;
                       break;
 
                     case PDU_TYPE_COMPLEX_ACK:

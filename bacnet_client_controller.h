@@ -15,13 +15,16 @@
 
 #include "bacnet_service_config_fb.h"
 #include "BACnetReadProperty.h"
+#include "BACnetWriteProperty.h"
 
 #include "bacnet_readproperty_handle.h"
+#include "bacnet_writeproperty_handle.h"
 
 class CBacnetServiceHandle;
 
 class CBacnetClientController: public forte::core::io::IODeviceMultiController {
   friend class CBacnetReadPropertyConfigFB;
+  friend class CBacnetWritePropertyConfigFB;
   friend class CBacnetServiceHandle;
   public:
     CBacnetClientController(CDeviceExecution& paDeviceExecution, int id);
@@ -72,6 +75,7 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     bool decodeNPDU(uint8_t *pdu, uint32_t &apdu_offset, uint32_t &apdu_len, uint8_t &apdu_type, uint8_t &service_choice);
     void handleAPDU(uint8_t *apdu, const uint32_t &apdu_len, const uint8_t &apdu_type, const uint8_t &service_choice, const struct sockaddr_in &src);
     void handleRPAck(uint8_t *apdu, const uint32_t &apdu_len);
+    void handleWPAck(uint8_t *apdu, const uint32_t &apdu_len);
 
     void buildWhoIsAndSend(uint32_t device_id, uint8_t *buffer);
     void decodeAndHandleIAm(uint8_t *apdu, const uint32_t &apdu_len, const struct sockaddr_in &src);

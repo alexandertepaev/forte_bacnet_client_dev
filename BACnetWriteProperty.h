@@ -18,9 +18,12 @@
 #include <forte_uint.h>
 #include <forte_wstring.h>
 #include "BACnetAdapter.h"
+#include "bacnet_service_config_fb.h"
+#include "bacnet_client_controller.h"
 
-class FORTE_BACnetWriteProperty: public CFunctionBlock{
-  DECLARE_FIRMWARE_FB(FORTE_BACnetWriteProperty)
+
+class CBacnetWritePropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
+  DECLARE_FIRMWARE_FB(CBacnetWritePropertyConfigFB)
 
 private:
   static const CStringDictionary::TStringId scm_anDataInputNames[];
@@ -29,24 +32,24 @@ private:
     return *static_cast<CIEC_BOOL*>(getDI(0));
   };
 
-  CIEC_STRING &ObserverName() {
-    return *static_cast<CIEC_STRING*>(getDI(1));
+  CIEC_WSTRING &ObserverName() {
+    return *static_cast<CIEC_WSTRING*>(getDI(1));
   };
 
   CIEC_UINT &DeviceID() {
     return *static_cast<CIEC_UINT*>(getDI(2));
   };
 
-  CIEC_STRING &ObjectType() {
-    return *static_cast<CIEC_STRING*>(getDI(3));
+  CIEC_WSTRING &ObjectType() {
+    return *static_cast<CIEC_WSTRING*>(getDI(3));
   };
 
   CIEC_UINT &ObjectID() {
     return *static_cast<CIEC_UINT*>(getDI(4));
   };
 
-  CIEC_STRING &ObjectProperty() {
-    return *static_cast<CIEC_STRING*>(getDI(5));
+  CIEC_WSTRING &ObjectProperty() {
+    return *static_cast<CIEC_WSTRING*>(getDI(5));
   };
 
   CIEC_UINT &Priority() {
@@ -88,11 +91,37 @@ private:
 
   void executeEvent(int pa_nEIID);
 
+  const char* init();
+
+  int m_nIndex;
+
+  static const char* const scmError;
+  static const char* const scmOK;
+
+
 public:
-  FUNCTION_BLOCK_CTOR(FORTE_BACnetWriteProperty){
+  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetWritePropertyConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB() {
+  
   };
 
-  virtual ~FORTE_BACnetWriteProperty(){};
+  virtual ~CBacnetWritePropertyConfigFB(){};
+
+   struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
+
+    uint32_t mPriority;
+    
+    ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
+    CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId, paObjectProperty, paArrayIndex) {
+      if(paPriority < 1 || paPriority > 16) {
+        mPriority = 16;
+      } else {
+        mPriority = paPriority;
+      }
+    };
+  };
+
+  uint32_t getObjectType(CIEC_WSTRING paObjectType);
+  uint32_t getObjectProperty(CIEC_WSTRING paObjectProperty);
 
 };
 

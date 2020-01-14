@@ -22,6 +22,7 @@
 // #include "tsm.h"
 
 #include "rp.h"
+#include "wp.h"
 #include "bip.h"
 #include "bvlc.h"
 #include "whois.h"

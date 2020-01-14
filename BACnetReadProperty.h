@@ -103,8 +103,14 @@ public:
 
 
 
-  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetReadPropertyConfigFB, forte::core::io::IOConfigFBBase) {
+  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetReadPropertyConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB() {
   };
+
+  // CBacnetReadPropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
+  // forte::core::io::IOConfigFBBase( pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData), CBacnetServiceConfigFB() {
+
+  // };
+
 
   virtual ~CBacnetReadPropertyConfigFB(){};
 
