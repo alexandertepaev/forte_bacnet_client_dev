@@ -120,8 +120,8 @@ public:
     };
   };
 
-  uint32_t getObjectType(CIEC_WSTRING paObjectType);
-  uint32_t getObjectProperty(CIEC_WSTRING paObjectProperty);
+  // BACNET_OBJECT_TYPE getObjectType(CIEC_WSTRING paObjectType);
+  // uint32_t getObjectProperty(CIEC_WSTRING paObjectProperty);
 
 };
 

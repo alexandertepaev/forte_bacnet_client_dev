@@ -5,10 +5,19 @@
 #include "../../forte-incubation_1.11.0/src/core/io/device/io_controller_multi.h"
 #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
 
+#include "include/bacnet.h"
+
 class CBacnetServiceConfigFB
 {
 private:
   /* data */
+
+protected:
+
+  BACNET_OBJECT_TYPE getObjectType(CIEC_WSTRING paObjectType);
+  BACNET_PROPERTY_ID getObjectProperty(CIEC_WSTRING paObjectProperty);
+
+
 public:
   CBacnetServiceConfigFB(/* args */);
   ~CBacnetServiceConfigFB();

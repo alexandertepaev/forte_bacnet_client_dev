@@ -45,6 +45,7 @@ const SFBInterfaceSpec CBacnetReadPropertyConfigFB::scm_stFBInterfaceSpec = {
 void CBacnetReadPropertyConfigFB::executeEvent(int pa_nEIID){
   if(BACnetAdapterIn().INIT() == pa_nEIID) {
     DEVLOG_DEBUG("[BACnetReadPropertyConfigFB] init event\n");
+    // todo error message if init() return -1
     const char* const error = init();
     QO() = error == 0;
     STATUS() = scmOK;
@@ -69,22 +70,22 @@ void CBacnetReadPropertyConfigFB::executeEvent(int pa_nEIID){
 }
 
 
-/*
+// /*
 
-*** TODO: move this somewhere?
-    functions that return bacnet libs encodings
-*/
-uint32_t getObjectType(CIEC_WSTRING paObjectType){
-  if(paObjectType == "ANALOG_OUTPUT"){
-    return OBJECT_ANALOG_OUTPUT;
-  }
-}
+// *** TODO: move this somewhere?
+//     functions that return bacnet libs encodings
+// */
+// uint32_t getObjectType(CIEC_WSTRING paObjectType){
+//   if(paObjectType == "ANALOG_OUTPUT"){
+//     return OBJECT_ANALOG_OUTPUT;
+//   }
+// }
 
-uint32_t getObjectProperty(CIEC_WSTRING paObjectProperty){
-  if(paObjectProperty == "PRESENT_VALUE"){
-    return PROP_PRESENT_VALUE;
-  }
-}
+// uint32_t getObjectProperty(CIEC_WSTRING paObjectProperty){
+//   if(paObjectProperty == "PRESENT_VALUE"){
+//     return PROP_PRESENT_VALUE;
+//   }
+// }
 
 const char* CBacnetReadPropertyConfigFB::init(){
 
@@ -92,7 +93,9 @@ const char* CBacnetReadPropertyConfigFB::init(){
   forte::core::io::IOConfigFBMultiMaster *master = forte::core::io::IOConfigFBMultiMaster::getMasterById(BACnetAdapterIn().MasterId());
   CBacnetClientController *clictr = static_cast<CBacnetClientController *>(master->getDeviceController());
 
-  m_stServiceConfig = new ServiceConfig(DeviceID(), getObjectType(ObjectType()), ObjectID(), getObjectProperty(ObjectProperty()), BACNET_ARRAY_ALL);
+  m_stServiceConfig = new ServiceConfig(DeviceID(), getObjectType(ObjectType()), ObjectID(), getObjectProperty(ObjectProperty()), BACNET_ARRAY_ALL); // TODO BACNET_ARRAY_ALL?
+
+  //TODO if not analog input/value/object and not binary input/value/object and not present value - return -1 --- for now only allow these type of operations
 
   clictr->addAddrListEntry(m_stServiceConfig->mDeviceId);
 

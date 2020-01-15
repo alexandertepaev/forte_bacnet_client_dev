@@ -23,9 +23,7 @@ public:
 
 protected:
   virtual void get(CIEC_ANY &){};
-
- 
-  uint32_t value;
+  
 };
 
 #endif

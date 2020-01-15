@@ -23,9 +23,6 @@ public:
 
 protected:
   virtual void set(const CIEC_ANY &){};
-
- 
-  CIEC_DWORD present_value;
 };
 
 #endif

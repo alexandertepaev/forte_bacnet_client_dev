@@ -31,6 +31,7 @@ public:
   size_t getIdentifier() const { return 0; };
 
   CBacnetServiceConfigFB *mConfigFB;
+  CIEC_ANY *mValue;
 
   enum EBacnetHandleState{
     e_Idle, e_AwaitingResponse 

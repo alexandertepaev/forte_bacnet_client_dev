@@ -6,7 +6,6 @@ CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceCo
    DEVLOG_DEBUG("[CBacnetReadPropertyHandle] CBacnetReadPropertyHandle(): Initializing ReadProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d\n", paServiceConfigFB->m_stServiceConfig->mDeviceId, paServiceConfigFB->m_stServiceConfig->mObjectType, paServiceConfigFB->m_stServiceConfig->mObjectId, paServiceConfigFB->m_stServiceConfig->mObjectProperty, paServiceConfigFB->m_stServiceConfig->mArrayIndex);
 
   //TODO: check if we know the address of the device. (controller->checkAddr(...)) If we don't know it, construct WHO-IS pdu and send it.
-
 }
 
 CBacnetReadPropertyHandle::~CBacnetReadPropertyHandle()
@@ -21,7 +20,14 @@ void CBacnetReadPropertyHandle::get(CIEC_ANY &paValue) {
     controller->pushToRingbuffer(this);
     m_eHandleState = e_AwaitingResponse;
   } else if (m_eHandleState == e_AwaitingResponse) {
-    static_cast<CIEC_DWORD&>(paValue) = present_value;
+
+    if(mType == CIEC_ANY::e_DWORD) {
+      static_cast<CIEC_DWORD&>(paValue) = *static_cast<CIEC_DWORD *>(mValue);
+    } else if (mType == CIEC_ANY::e_BOOL) {
+      static_cast<CIEC_BOOL&>(paValue) = *static_cast<CIEC_BOOL *>(mValue);
+    }
+    
+    
     m_eHandleState = e_Idle;
   } else {
     // 
@@ -54,13 +60,9 @@ int CBacnetReadPropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &inv
 }
 
 void CBacnetReadPropertyHandle::decodeServiceResp(uint8_t *pdu, const uint32_t &len) {
-  // if(pdu[0] != SERVICE_CONFIRMED_READ_PROPERTY) {
-  //   return;
-  // }
   
   DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Decoding APDU of length: %d\n", len);
   BACNET_READ_PROPERTY_DATA data;
-  // int rp_len = rp_ack_decode_service_request(&pdu[1], len-1, &data);
   int rp_len = rp_ack_decode_service_request(&pdu[3], len-3, &data);
 
   if(rp_len > 0 && data.object_type == static_cast<BACNET_OBJECT_TYPE>(mConfigFB->m_stServiceConfig->mObjectType) &&
@@ -70,11 +72,19 @@ void CBacnetReadPropertyHandle::decodeServiceResp(uint8_t *pdu, const uint32_t &
     DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Decoded: Obj_Type=%d, Obj_Instance=%d, Obj_Prop=%d, App_Data_Len=%d\n", data.object_type, data.object_instance, data.object_property, data.application_data_len);
     BACNET_APPLICATION_DATA_VALUE value;
     int len = bacapp_decode_application_data(data.application_data, (uint8_t) data.application_data_len, &value);
+    DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application TAG=%d\n", value.tag);
     if(value.tag == BACNET_APPLICATION_TAG_REAL) {
-      DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application Value=%f\n", value.type.Real);
-     
-      present_value = static_cast<CIEC_DWORD>(value.type.Real);
+
+      DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application Value=%f (Real) \n", value.type.Real);
+      mValue->setValue(static_cast<CIEC_DWORD>(value.type.Real));
       fireConfirmationEvent();
+
+    } else if(value.tag == BACNET_APPLICATION_TAG_ENUMERATED && mType == CIEC_ANY::e_BOOL ) {
+      
+      DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application Value=%d (Enumerated)\n", value.type.Enumerated);
+      mValue->setValue(static_cast<CIEC_BOOL>(value.type.Enumerated));
+      fireConfirmationEvent();
+
     }
   
   }

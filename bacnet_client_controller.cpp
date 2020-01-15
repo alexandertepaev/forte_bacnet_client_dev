@@ -199,6 +199,29 @@ void CBacnetClientController::buildWhoIsAndSend(uint32_t device_id, uint8_t *buf
   sendPacket(buffer, len, mBroadcastAddr, mPort);
 }
 
+int CBacnetClientController::encodeWhoIs(uint32_t device_id, uint8_t *buffer){
+
+  //get broadcast addr
+  BACNET_ADDRESS broadcast_addr = ipToBacnetAddress(mBroadcastAddr, mPort, true);
+
+  //get local addr
+  BACNET_ADDRESS local_addr = ipToBacnetAddress(mLocalAddr, mPort, false);
+
+  // encode npdu control data: no reply expected, normal priority
+  BACNET_NPDU_DATA npdu_data;
+  npdu_encode_npdu_data(&npdu_data, false, MESSAGE_PRIORITY_NORMAL);
+
+  int pdu_len = 4;
+  pdu_len += npdu_encode_pdu(&buffer[pdu_len], &broadcast_addr, &local_addr, &npdu_data);
+  pdu_len += whois_encode_apdu(&buffer[pdu_len], device_id, device_id);
+
+  buffer[0] = BVLL_TYPE_BACNET_IP;
+  buffer[1] = BVLC_ORIGINAL_BROADCAST_NPDU;
+  encode_unsigned16(&buffer[2], pdu_len);
+
+  return pdu_len;
+}
+
 void CBacnetClientController::runLoop() {
   DEVLOG_DEBUG("[CBacnetClientController] runLoop(): Starting controller loop\n");
   while(isAlive()) {
@@ -221,60 +244,13 @@ void CBacnetClientController::runLoop() {
       m_eClienControllerState = e_Operating;  
 
     } else if (m_eClienControllerState == e_Operating) {
-      
-      /*
-        if ringbuffer
-          elem = getElement
-          buildPacketAndSend(elem)
-        
-        receiveAndHandle()
-        
-        --------------
 
-        buildPacketAndSend:
-          getAddressByDeviceId(...);
-          getFreeInvokeId(...);
-          encodePacket(...);
-          sendPacket(...);
-          if(success)
-            addInvokeIDHandlePair;
-
-        --------------
-
-        receiveAndHandle()
-          receivePacket();
-          if(success)
-            decodeNPDU(...);
-            if(success)
-              handleAPDU(...);
-
-        ---------------
-
-        handleAPDU(...)
-          switch(apdu_type)
-            case unconf_req:
-              if(i_am)
-                if not initialized, find conf fb and notify it;
-                update addr info;
-              break;
-            case simple_ack
-              if(wp)
-                handleWPAck;
-              break;
-            case compleck_ack;
-              if(rp)
-                handleRPAck;
-              break;
-        
-        */
-
-      // send from ringbuffer
+      //consume from ringbuffer
       if(m_nSendRingbufferSize != 0) {
-        //consume from ringbuffer
         CBacnetServiceHandle *handle = consumeFromRingbuffer();
         buildPacketAndSend(handle);
-
       }
+
       // receive response or some kind of notification
       receiveAndHandle(); 
     }
@@ -333,6 +309,30 @@ void CBacnetClientController::buildPacketAndSend(CBacnetServiceHandle *handle) {
 
 }
 
+bool CBacnetClientController::addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *paHandle) {
+  // Check for duplicates
+  if(mInvokeIDsHandles.find(paInvokeID) != mInvokeIDsHandles.end()) {
+    DEVLOG_WARNING("[CBacnetClientController] addInvokeIDHandlePair(): Duplicated mInvokeIDsHandles entry '%d'\n", paInvokeID);
+    return false;
+  }
+
+  mInvokeIDsHandles.insert(std::make_pair(paInvokeID, paHandle));
+  DEVLOG_WARNING("[CBacnetClientController] addInvokeIDHandlePair(): New mInvokeIDsHandles entry '%d', mInvokeIDsHandles's size=%d\n", paInvokeID, mInvokeIDsHandles.size());
+
+  return true;
+}
+
+bool CBacnetClientController::removeInvokeIDHandlePair(const uint8_t &paInvokeID) {
+  for(TInvokeIDHandleMap::iterator it = mInvokeIDsHandles.begin(); it != mInvokeIDsHandles.end(); ++it) {
+    if(it->first == paInvokeID) {
+      mInvokeIDsHandles.erase(it);
+      DEVLOG_DEBUG("[CBacnetClientController] removeInvokeIDHandlePair(): Erased mInvokeIDsHandles's entry '%d', mInvokeIDsHandles's size=%d\n", paInvokeID, mInvokeIDsHandles.size());
+      return true;
+    }
+  }
+  return false;
+}
+
 void CBacnetClientController::receiveAndHandle(){
   uint8_t npdu[MAX_PDU];
   sockaddr_in src;
@@ -350,109 +350,6 @@ void CBacnetClientController::receiveAndHandle(){
     } else {
         DEVLOG_DEBUG("[CBacnetClientController] decodeNPDU() failed\n");
     }
-  }
-}
-
-void CBacnetClientController::handleAPDU(uint8_t *apdu, const uint32_t &apdu_len, const uint8_t &apdu_type, const uint8_t &service_choice, const struct sockaddr_in &src) {
-
-  switch (apdu_type)
-  {
-    case PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST:
-      if(service_choice ==  SERVICE_UNCONFIRMED_I_AM){
-        decodeAndHandleIAm(apdu, apdu_len, src);
-      }
-        
-      break;
-    
-    case PDU_TYPE_SIMPLE_ACK:
-      if(service_choice == SERVICE_CONFIRMED_WRITE_PROPERTY) {
-        handleWPAck(apdu, apdu_len);
-      }
-      break;
-
-    case PDU_TYPE_COMPLEX_ACK:
-      if(service_choice == SERVICE_CONFIRMED_READ_PROPERTY) {
-        handleRPAck(apdu, apdu_len);
-      }
-      break;
-
-    default:
-      break;
-  }
-
-}
-
-forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceController::HandleDescriptor *handleDescriptor) {
-
-  HandleDescriptor *desc = static_cast<CBacnetClientController::HandleDescriptor *>(handleDescriptor);
-  switch (desc->mServiceType)
-  {
-    case SERVICE_CONFIRMED_READ_PROPERTY:
-      // FIXME type based on the accessed object params?
-      return new CBacnetReadPropertyHandle(this, desc->mDirection, CIEC_ANY::e_DWORD, mDeviceExecution, desc->mServiceConfigFB); //TODO: is it better to compose a pdu one single time here and store it's value in rom or is it better to compose it every single time we want to send a request
-      break;
-    case SERVICE_CONFIRMED_WRITE_PROPERTY:
-      // FIXME - type based on the accessed object params? 
-      return new CBacnetWritePropertyHandle(this, desc->mDirection, CIEC_ANY::e_DWORD, mDeviceExecution, desc->mServiceConfigFB);
-      break;
-    default:
-      DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Unknown/Unsupported BACnet Service\n");
-      return 0;
-      break;
-  }
-}
-
-
-void CBacnetClientController::addSlaveHandle(int index, forte::core::io::IOHandle* handle){
-  DEVLOG_DEBUG("[CBacnetClientController] addSlaveHandle(): Registering handle to controller\n");
-  // CBacnetServiceHandle *bacnet_handle = static_cast<CBacnetServiceHandle *>(handle);
-  // uint8_t pdu[MAX_MPDU];
-
-  // int pdu_len = bacnet_handle->encodeServiceReq(pdu, 1);
-  // printf("%d ----- \n", pdu_len);
-
-  // for(int i = 0; i<pdu_len-1; i++){
-  //   printf("%02x ", pdu[i]);
-  // }
-  // printf("\n");
-}
-
-bool CBacnetClientController::pushToRingbuffer(CBacnetServiceHandle *handle) {
-  if(m_nSendRingbufferSize == cm_nSendRingbufferSize) {
-    return false;
-  }
-  m_aSendRingbuffer[m_nSendRingbufferHeadIndex] = handle;
-  m_nSendRingbufferSize++;
-  m_nSendRingbufferHeadIndex = (m_nSendRingbufferHeadIndex + 1) % cm_nSendRingbufferSize;
-
-  DEVLOG_DEBUG("Pushed to ringbuffer: head: %d tail: %d size: %d\n", m_nSendRingbufferHeadIndex, m_nSendRingbufferTailIndex, m_nSendRingbufferSize);
-  return true;
-}
-
-CBacnetServiceHandle * CBacnetClientController::consumeFromRingbuffer() {
-  if(m_nSendRingbufferSize == 0) {
-    return NULL;
-  }
-  CBacnetServiceHandle *ret = m_aSendRingbuffer[m_nSendRingbufferTailIndex];
-  m_nSendRingbufferSize--;
-  m_nSendRingbufferTailIndex = (m_nSendRingbufferTailIndex + 1) % cm_nSendRingbufferSize; 
-  DEVLOG_DEBUG("Consumed from ringbuffer: head: %d tail: %d size: %d\n", m_nSendRingbufferHeadIndex, m_nSendRingbufferTailIndex, m_nSendRingbufferSize);
-  return ret;
-}
-
-void CBacnetClientController::handleRPAck(uint8_t *apdu, const uint32_t &apdu_len) {
-  uint8_t invoke_id = apdu[1];
-  if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
-    mInvokeIDsHandles[invoke_id]->decodeServiceResp(apdu, apdu_len);
-    removeInvokeIDHandlePair(invoke_id);
-  }
-}
-
-void CBacnetClientController::handleWPAck(uint8_t *apdu, const uint32_t &apdu_len) {
-  uint8_t invoke_id = apdu[1];
-  if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
-    mInvokeIDsHandles[invoke_id]->decodeServiceResp(apdu, apdu_len);
-    removeInvokeIDHandlePair(invoke_id);
   }
 }
 
@@ -528,29 +425,125 @@ bool CBacnetClientController::decodeNPDU(uint8_t *pdu, uint32_t &apdu_offset, ui
   return false;
 }
 
+void CBacnetClientController::handleAPDU(uint8_t *apdu, const uint32_t &apdu_len, const uint8_t &apdu_type, const uint8_t &service_choice, const struct sockaddr_in &src) {
 
-bool CBacnetClientController::addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *paHandle) {
-  // Check for duplicates
-  if(mInvokeIDsHandles.find(paInvokeID) != mInvokeIDsHandles.end()) {
-    DEVLOG_WARNING("[CBacnetClientController] addInvokeIDHandlePair(): Duplicated mInvokeIDsHandles entry '%d'\n", paInvokeID);
-    return false;
+  switch (apdu_type)
+  {
+    case PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST:
+      if(service_choice ==  SERVICE_UNCONFIRMED_I_AM){
+        decodeAndHandleIAm(apdu, apdu_len, src);
+      } 
+      break;
+    
+    case PDU_TYPE_SIMPLE_ACK:
+      if(service_choice == SERVICE_CONFIRMED_WRITE_PROPERTY) {
+        handleWPAck(apdu, apdu_len);
+      }
+      break;
+
+    case PDU_TYPE_COMPLEX_ACK:
+      if(service_choice == SERVICE_CONFIRMED_READ_PROPERTY) {
+        handleRPAck(apdu, apdu_len);
+      }
+      break;
+
+    default:
+      break;
   }
 
-  mInvokeIDsHandles.insert(std::make_pair(paInvokeID, paHandle));
-  DEVLOG_WARNING("[CBacnetClientController] addInvokeIDHandlePair(): New mInvokeIDsHandles entry '%d', mInvokeIDsHandles's size=%d\n", paInvokeID, mInvokeIDsHandles.size());
+}
 
+void CBacnetClientController::handleRPAck(uint8_t *apdu, const uint32_t &apdu_len) {
+  uint8_t invoke_id = apdu[1];
+  if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
+    mInvokeIDsHandles[invoke_id]->decodeServiceResp(apdu, apdu_len);
+    removeInvokeIDHandlePair(invoke_id);
+  }
+}
+
+void CBacnetClientController::handleWPAck(uint8_t *apdu, const uint32_t &apdu_len) {
+  uint8_t invoke_id = apdu[1];
+  if(mInvokeIDsHandles.find(invoke_id) != mInvokeIDsHandles.end()) {
+    mInvokeIDsHandles[invoke_id]->decodeServiceResp(apdu, apdu_len);
+    removeInvokeIDHandlePair(invoke_id);
+  }
+}
+
+forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceController::HandleDescriptor *handleDescriptor) {
+
+  HandleDescriptor *desc = static_cast<CBacnetClientController::HandleDescriptor *>(handleDescriptor);
+  
+  CIEC_ANY::EDataTypeID data_type = CIEC_ANY::e_ANY;
+
+  if( (desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_OUTPUT || 
+        desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_INPUT) && 
+        desc->mServiceConfigFB->m_stServiceConfig->mObjectProperty == PROP_PRESENT_VALUE) {
+
+        data_type = CIEC_ANY::e_DWORD;
+
+  } else if ( (desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_BINARY_OUTPUT || 
+              desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_INPUT) && 
+              desc->mServiceConfigFB->m_stServiceConfig->mObjectProperty == PROP_PRESENT_VALUE) {
+
+        data_type = CIEC_ANY::e_BOOL;
+
+  } else {
+    return 0;
+  }
+
+  switch (desc->mServiceType)
+  {
+    case SERVICE_CONFIRMED_READ_PROPERTY:
+      // FIXME type based on the accessed object params?
+      return new CBacnetReadPropertyHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB); //TODO: is it better to compose a pdu one single time here and store it's value in rom or is it better to compose it every single time we want to send a request
+      break;
+    case SERVICE_CONFIRMED_WRITE_PROPERTY:
+      // FIXME - type based on the accessed object params? 
+      return new CBacnetWritePropertyHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
+      break;
+    default:
+      DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Unknown/Unsupported BACnet Service\n");
+      return 0;
+      break;
+  }
+}
+
+
+void CBacnetClientController::addSlaveHandle(int index, forte::core::io::IOHandle* handle){
+  DEVLOG_DEBUG("[CBacnetClientController] addSlaveHandle(): Registering handle to controller\n");
+  // CBacnetServiceHandle *bacnet_handle = static_cast<CBacnetServiceHandle *>(handle);
+  // uint8_t pdu[MAX_MPDU];
+
+  // int pdu_len = bacnet_handle->encodeServiceReq(pdu, 1);
+  // printf("%d ----- \n", pdu_len);
+
+  // for(int i = 0; i<pdu_len-1; i++){
+  //   printf("%02x ", pdu[i]);
+  // }
+  // printf("\n");
+}
+
+bool CBacnetClientController::pushToRingbuffer(CBacnetServiceHandle *handle) {
+  if(m_nSendRingbufferSize == cm_nSendRingbufferSize) {
+    return false;
+  }
+  m_aSendRingbuffer[m_nSendRingbufferHeadIndex] = handle;
+  m_nSendRingbufferSize++;
+  m_nSendRingbufferHeadIndex = (m_nSendRingbufferHeadIndex + 1) % cm_nSendRingbufferSize;
+
+  DEVLOG_DEBUG("Pushed to ringbuffer: head: %d tail: %d size: %d\n", m_nSendRingbufferHeadIndex, m_nSendRingbufferTailIndex, m_nSendRingbufferSize);
   return true;
 }
 
-bool CBacnetClientController::removeInvokeIDHandlePair(const uint8_t &paInvokeID) {
-  for(TInvokeIDHandleMap::iterator it = mInvokeIDsHandles.begin(); it != mInvokeIDsHandles.end(); ++it) {
-    if(it->first == paInvokeID) {
-      mInvokeIDsHandles.erase(it);
-      DEVLOG_WARNING("[CBacnetClientController] removeInvokeIDHandlePair(): Erased mInvokeIDsHandles's entry '%d', mInvokeIDsHandles's size=%d\n", paInvokeID, mInvokeIDsHandles.size());
-      return true;
-    }
+CBacnetServiceHandle * CBacnetClientController::consumeFromRingbuffer() {
+  if(m_nSendRingbufferSize == 0) {
+    return NULL;
   }
-  return false;
+  CBacnetServiceHandle *ret = m_aSendRingbuffer[m_nSendRingbufferTailIndex];
+  m_nSendRingbufferSize--;
+  m_nSendRingbufferTailIndex = (m_nSendRingbufferTailIndex + 1) % cm_nSendRingbufferSize; 
+  DEVLOG_DEBUG("Consumed from ringbuffer: head: %d tail: %d size: %d\n", m_nSendRingbufferHeadIndex, m_nSendRingbufferTailIndex, m_nSendRingbufferSize);
+  return ret;
 }
 
 void CBacnetClientController::initDone() {
@@ -579,27 +572,4 @@ bool CBacnetClientController::addAddrListEntry(uint32_t device_id) {
 
   DEVLOG_DEBUG("[CBacnetClientController] addAddrListEntry() -- added new entry\n");
   return true;
-}
-
-int CBacnetClientController::encodeWhoIs(uint32_t device_id, uint8_t *buffer){
-
-  //get broadcast addr
-  BACNET_ADDRESS broadcast_addr = ipToBacnetAddress(mBroadcastAddr, mPort, true);
-
-  //get local addr
-  BACNET_ADDRESS local_addr = ipToBacnetAddress(mLocalAddr, mPort, false);
-
-  // encode npdu control data: no reply expected, normal priority
-  BACNET_NPDU_DATA npdu_data;
-  npdu_encode_npdu_data(&npdu_data, false, MESSAGE_PRIORITY_NORMAL);
-
-  int pdu_len = 4;
-  pdu_len += npdu_encode_pdu(&buffer[pdu_len], &broadcast_addr, &local_addr, &npdu_data);
-  pdu_len += whois_encode_apdu(&buffer[pdu_len], device_id, device_id);
-
-  buffer[0] = BVLL_TYPE_BACNET_IP;
-  buffer[1] = BVLC_ORIGINAL_BROADCAST_NPDU;
-  encode_unsigned16(&buffer[2], pdu_len);
-
-  return pdu_len;
 }
