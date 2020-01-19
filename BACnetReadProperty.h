@@ -124,6 +124,24 @@ public:
       };
     };
   */
+  struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
+
+    uint32_t mObjectProperty;
+    uint32_t mArrayIndex;
+    
+    // ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
+    // CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId, paObjectProperty, paArrayIndex) {
+    //   if(paPriority < 1 || paPriority > 16) {
+    //     mPriority = 16;
+    //   } else {
+    //     mPriority = paPriority;
+    //   }
+    // };
+    ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex) :
+    CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {
+      
+    };
+  };
 
 
 };

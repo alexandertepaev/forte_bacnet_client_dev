@@ -3,7 +3,7 @@
 CBacnetWritePropertyHandle::CBacnetWritePropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution, paServiceConfigFB)
 {
 
-   DEVLOG_DEBUG("[CBacnetWritePropertyHandle] CBacnetWritePropertyHandle(): Initializing WriteProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, Priority=%d\n", paServiceConfigFB->m_stServiceConfig->mDeviceId, paServiceConfigFB->m_stServiceConfig->mObjectType, paServiceConfigFB->m_stServiceConfig->mObjectId, paServiceConfigFB->m_stServiceConfig->mObjectProperty, paServiceConfigFB->m_stServiceConfig->mArrayIndex, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mPriority);
+   DEVLOG_DEBUG("[CBacnetWritePropertyHandle] CBacnetWritePropertyHandle(): Initializing WriteProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, Priority=%d\n", paServiceConfigFB->m_stServiceConfig->mDeviceId, paServiceConfigFB->m_stServiceConfig->mObjectType, paServiceConfigFB->m_stServiceConfig->mObjectId, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mObjectProperty, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mArrayIndex, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mPriority);
 
 }
 
@@ -44,8 +44,8 @@ int CBacnetWritePropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &in
   BACNET_WRITE_PROPERTY_DATA data;
   data.object_type = static_cast<BACNET_OBJECT_TYPE>(mConfigFB->m_stServiceConfig->mObjectType);
   data.object_instance = mConfigFB->m_stServiceConfig->mObjectId;
-  data.object_property = static_cast<BACNET_PROPERTY_ID>(mConfigFB->m_stServiceConfig->mObjectProperty);
-  data.array_index = mConfigFB->m_stServiceConfig->mArrayIndex;
+  data.object_property = static_cast<BACNET_PROPERTY_ID>(static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(mConfigFB->m_stServiceConfig)->mObjectProperty);
+  data.array_index = static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(mConfigFB->m_stServiceConfig)->mArrayIndex;
 
   BACNET_APPLICATION_DATA_VALUE application_data;
   application_data.context_specific = false;

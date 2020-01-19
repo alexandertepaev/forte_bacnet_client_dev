@@ -16,15 +16,18 @@
 #include "bacnet_service_config_fb.h"
 #include "BACnetReadProperty.h"
 #include "BACnetWriteProperty.h"
+#include "BACnetSubscribeUnconfirmedCOV.h"
 
 #include "bacnet_readproperty_handle.h"
 #include "bacnet_writeproperty_handle.h"
+#include "bacnet_unconfirmed_cov_handle.h"
 
 class CBacnetServiceHandle;
 
 class CBacnetClientController: public forte::core::io::IODeviceMultiController {
   friend class CBacnetReadPropertyConfigFB;
   friend class CBacnetWritePropertyConfigFB;
+  friend class CBacnetSubscribeUnconfirmedCOVConfigFB;
   friend class CBacnetServiceHandle;
   public:
     CBacnetClientController(CDeviceExecution& paDeviceExecution, int id);

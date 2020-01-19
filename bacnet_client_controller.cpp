@@ -289,7 +289,7 @@ void CBacnetClientController::buildPacketAndSend(CBacnetServiceHandle *handle) {
   // get target device id and address
   struct in_addr dest_addr;
   uint16_t dest_port;
-  getAddressByDeviceId(handle->mConfigFB->m_stServiceConfig->mDeviceId, dest_addr, dest_port);
+  getAddressByDeviceId(handle->mConfigFB->m_stServiceConfig->mDeviceId, dest_addr, dest_port); // TODO - do nothing if addr not found + do not packet from the ring buffer?
   DEVLOG_DEBUG("[CBacnetClientController] buildPAcketAndSend(): Destenation address %s:%04X\n", inet_ntoa(dest_addr), dest_port);
 
   // get next free invoke id
@@ -475,15 +475,15 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
   
   CIEC_ANY::EDataTypeID data_type = CIEC_ANY::e_ANY;
 
-  if( (desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_OUTPUT || 
-        desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_INPUT) && 
-        desc->mServiceConfigFB->m_stServiceConfig->mObjectProperty == PROP_PRESENT_VALUE) {
+  if( desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_OUTPUT || 
+        desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_INPUT ||
+        desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_ANALOG_VALUE) { // TODO - check in scfb (rp,wp) if it tgt object prop is present value
 
         data_type = CIEC_ANY::e_DWORD;
 
-  } else if ( (desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_BINARY_OUTPUT || 
-              desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_INPUT) && 
-              desc->mServiceConfigFB->m_stServiceConfig->mObjectProperty == PROP_PRESENT_VALUE) {
+  } else if ( desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_BINARY_OUTPUT || 
+              desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_INPUT ||
+              desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_VALUE) { // TODO - check in scfb (rp,wp) if it tgt object prop is present value
 
         data_type = CIEC_ANY::e_BOOL;
 
@@ -501,6 +501,10 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
       // FIXME - type based on the accessed object params? 
       return new CBacnetWritePropertyHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
       break;
+    case SERVICE_CONFIRMED_SUBSCRIBE_COV:
+      
+      return new CBacnetUnconfirmedCOVHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
+      break;
     default:
       DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Unknown/Unsupported BACnet Service\n");
       return 0;
@@ -511,16 +515,10 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
 
 void CBacnetClientController::addSlaveHandle(int index, forte::core::io::IOHandle* handle){
   DEVLOG_DEBUG("[CBacnetClientController] addSlaveHandle(): Registering handle to controller\n");
-  // CBacnetServiceHandle *bacnet_handle = static_cast<CBacnetServiceHandle *>(handle);
-  // uint8_t pdu[MAX_MPDU];
-
-  // int pdu_len = bacnet_handle->encodeServiceReq(pdu, 1);
-  // printf("%d ----- \n", pdu_len);
-
-  // for(int i = 0; i<pdu_len-1; i++){
-  //   printf("%02x ", pdu[i]);
-  // }
-  // printf("\n");
+  CBacnetServiceHandle *bacnetHandle = static_cast<CBacnetServiceHandle *>(handle);
+  bacnetHandle->mConfigFB->setHandle(bacnetHandle);
+  //static_cast<CBacnetServiceHandle *>(handle)->mConfigFB->foo(handle);
+  
 }
 
 bool CBacnetClientController::pushToRingbuffer(CBacnetServiceHandle *handle) {

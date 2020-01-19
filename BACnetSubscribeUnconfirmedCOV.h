@@ -3,27 +3,25 @@
  ***
  *** This file was generated using the 4DIAC FORTE Export Filter V1.0.x!
  ***
- *** Name: BACnetWriteProperty
+ *** Name: BACnetSubscribeUnconfirmedCOV
  *** Description: Service Interface Function Block Type
  *** Version: 
- ***     1.0: 2019-12-30/root -  - 
+ ***     1.0: 2020-01-18/root -  - 
  *************************************************************************/
 
-#ifndef _BACNETWRITEPROPERTY_H_
-#define _BACNETWRITEPROPERTY_H_
+#ifndef _BACNETSUBSCRIBEUNCONFIRMEDCOV_H_
+#define _BACNETSUBSCRIBEUNCONFIRMEDCOV_H_
 
 #include <funcbloc.h>
 #include <forte_bool.h>
-#include <forte_string.h>
 #include <forte_uint.h>
 #include <forte_wstring.h>
 #include "BACnetAdapter.h"
 #include "bacnet_service_config_fb.h"
 #include "bacnet_client_controller.h"
 
-
-class CBacnetWritePropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
-  DECLARE_FIRMWARE_FB(CBacnetWritePropertyConfigFB)
+class CBacnetSubscribeUnconfirmedCOVConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB {
+  DECLARE_FIRMWARE_FB(CBacnetSubscribeUnconfirmedCOVConfigFB)
 
 private:
   static const CStringDictionary::TStringId scm_anDataInputNames[];
@@ -46,18 +44,6 @@ private:
 
   CIEC_UINT &ObjectID() {
     return *static_cast<CIEC_UINT*>(getDI(4));
-  };
-
-  CIEC_WSTRING &ObjectProperty() {
-    return *static_cast<CIEC_WSTRING*>(getDI(5));
-  };
-
-  CIEC_UINT &Priority() {
-    return *static_cast<CIEC_UINT*>(getDI(6));
-  };
-
-  CIEC_UINT &ArrayIndex() {
-    return *static_cast<CIEC_UINT*>(getDI(7));
   };
 
   static const CStringDictionary::TStringId scm_anDataOutputNames[];
@@ -87,7 +73,7 @@ private:
   static const int scm_nBACnetAdapterInAdpNum = 1;
   static const SFBInterfaceSpec scm_stFBInterfaceSpec;
 
-   FORTE_FB_DATA_ARRAY(1, 8, 2, 2);
+   FORTE_FB_DATA_ARRAY(1, 5, 2, 2);
 
   void executeEvent(int pa_nEIID);
 
@@ -98,41 +84,13 @@ private:
   static const char* const scmError;
   static const char* const scmOK;
 
-
 public:
-  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetWritePropertyConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB() {
+  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetSubscribeUnconfirmedCOVConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB() {
   
   };
 
-  virtual ~CBacnetWritePropertyConfigFB(){};
+  virtual ~CBacnetSubscribeUnconfirmedCOVConfigFB(){};
 
-
-  struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
-
-    uint32_t mObjectProperty;
-    uint32_t mPriority;
-    uint32_t mArrayIndex;
-    
-    // ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
-    // CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId, paObjectProperty, paArrayIndex) {
-    //   if(paPriority < 1 || paPriority > 16) {
-    //     mPriority = 16;
-    //   } else {
-    //     mPriority = paPriority;
-    //   }
-    // };
-    ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
-    CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {
-      if(paPriority < 1 || paPriority > 16) {
-        mPriority = 16;
-      } else {
-        mPriority = paPriority;
-      }
-    };
-  };
-
-  // BACNET_OBJECT_TYPE getObjectType(CIEC_WSTRING paObjectType);
-  // uint32_t getObjectProperty(CIEC_WSTRING paObjectProperty);
 
 };
 
