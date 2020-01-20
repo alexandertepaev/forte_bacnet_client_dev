@@ -80,10 +80,13 @@ const char* CBacnetSubscribeUnconfirmedCOVConfigFB::init(){
   // TODO if not analog input/value/object and not binary input/value/object and not present value - return -1 --- for now only allow these type of operations
 
   clictr->addAddrListEntry(m_stServiceConfig->mDeviceId);
+  
 
   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, SERVICE_CONFIRMED_SUBSCRIBE_COV, this);
      
   clictr->addHandle(desc); 
+
+  clictr->addCOVSubListEntry(m_stServiceConfig, mServiceHandle);
 
   return 0;
 }

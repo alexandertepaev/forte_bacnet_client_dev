@@ -3,6 +3,8 @@
 
 // #include <devexec.h>
 #include "../../forte-incubation_1.11.0/src/core/io/device/io_controller_multi.h"
+#include "../../forte-incubation_1.11.0/src/arch/utils/timespec_utils.h"
+
 #include "bacnet_device_object.h"
 
 #define _BSD_SOURCE
@@ -21,6 +23,7 @@
 #include "bacnet_readproperty_handle.h"
 #include "bacnet_writeproperty_handle.h"
 #include "bacnet_unconfirmed_cov_handle.h"
+
 
 class CBacnetServiceHandle;
 
@@ -157,18 +160,28 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
       struct in_addr mAddr;
       uint16_t mPort;
     };
-
     typedef CSinglyLinkedList<SBacnetAddressListEntry *> TBacnetAddrList;
-
     TBacnetAddrList *pmAddrList;
-
     bool addAddrListEntry(uint32_t device_id);
-
     int encodeWhoIs(uint32_t device_id, uint8_t *buffer);
+
+    // cov subs list
+    struct SBacnetCOVSubsListEntry {
+      bool mSubscriptionAcknowledged;
+      uint8_t mAssignedInvokeId;
+      CBacnetServiceHandle *mHandle;
+      CBacnetServiceConfigFB::ServiceConfig *mSubscriptionConfig;
+    };
+    typedef CSinglyLinkedList<SBacnetCOVSubsListEntry *> TBacnetCOVSubList;
+    TBacnetCOVSubList *pmCOVSubList;
+    bool addCOVSubListEntry(CBacnetServiceConfigFB::ServiceConfig *paConfig, CBacnetServiceHandle *paHandle);
+    void buildSubscribeCOVAndSend(CBacnetServiceConfigFB::ServiceConfig *paConfig, uint8_t *buffer, uint8_t &paAssignedInvokeId);
+    void handleCOVSubscriptionAck(uint8_t *apdu, const uint32_t &apdu_len);
+    void handleUnconfirmedCOVNotifation(uint8_t *apdu, const uint32_t &apdu_len);
 
     int sendPacket(uint8_t *buffer, uint16_t len, struct in_addr dest_addr, uint16_t dest_port);
     int receivePacket(uint8_t *buffer, size_t buffer_size, uint16_t timeout, sockaddr_in &src);
-    void getAddressByDeviceId(uint32_t paDeviceId, struct in_addr &paDeviceAddr, uint16_t &paDeviceAddrPort);
+    bool getAddressByDeviceId(uint32_t paDeviceId, struct in_addr &paDeviceAddr, uint16_t &paDeviceAddrPort);
     BACNET_ADDRESS ipToBacnetAddress(struct in_addr paDeviceAddr, uint16_t paPort, bool paBroadcastAddr);
 
     

@@ -14,13 +14,38 @@ CBacnetUnconfirmedCOVHandle::~CBacnetUnconfirmedCOVHandle()
 
 
 void CBacnetUnconfirmedCOVHandle::get(CIEC_ANY &paValue) {
+  if (m_eHandleState == e_AwaitingResponse) {
+    if(mType == CIEC_ANY::e_DWORD) {
+      static_cast<CIEC_DWORD&>(paValue) = *static_cast<CIEC_DWORD *>(mValue);
+    } else if (mType == CIEC_ANY::e_BOOL) {
+      static_cast<CIEC_BOOL&>(paValue) = *static_cast<CIEC_BOOL *>(mValue);
+    }
+  }
+}
+
+// void CBacnetUnconfirmedCOVHandle::notificationReceived(CIEC_ANY &paValue) {
+//   DEVLOG_DEBUG("Hello from handler! Notification received\n");
+//   mValue = paValue;
+//   fireConfirmationEvent();
+// }
+void CBacnetUnconfirmedCOVHandle::notificationReceived(BACNET_PROPERTY_VALUE paPropertyValue) {
+  DEVLOG_DEBUG("Hello from handler! Notification received\n");
+  if(paPropertyValue.value.tag == BACNET_APPLICATION_TAG_REAL) {
+    mValue->setValue(static_cast<CIEC_DWORD>(paPropertyValue.value.type.Real));
+  } else if(paPropertyValue.value.tag == BACNET_APPLICATION_TAG_ENUMERATED){
+    mValue->setValue(static_cast<CIEC_BOOL>(paPropertyValue.value.type.Enumerated));
+  }
+  fireConfirmationEvent();
+}
+
+void CBacnetUnconfirmedCOVHandle::subscriptionAcknowledged() {
+  m_eHandleState = e_AwaitingResponse;
+}
+
+// int CBacnetUnconfirmedCOVHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src){
   
-}
+// }
 
-int CBacnetUnconfirmedCOVHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src){
-  
-}
+// void CBacnetUnconfirmedCOVHandle::decodeServiceResp(uint8_t *pdu, const uint32_t &len) {
 
-void CBacnetUnconfirmedCOVHandle::decodeServiceResp(uint8_t *pdu, const uint32_t &len) {
-
-}
+// }

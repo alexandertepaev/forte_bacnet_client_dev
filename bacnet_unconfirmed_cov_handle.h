@@ -17,10 +17,14 @@ public:
 
   virtual void get(CIEC_ANY &);
   
-  int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src);
+  int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src) { };
 
-  void decodeServiceResp(uint8_t *pdu, const uint32_t &len);
+  void decodeServiceResp(uint8_t *pdu, const uint32_t &len) { };
 
+  // void notificationReceived(CIEC_ANY paValue);
+  void notificationReceived(BACNET_PROPERTY_VALUE paPropertyValue);
+
+  void subscriptionAcknowledged();
 protected:
   virtual void set(const CIEC_ANY &){};
 };
