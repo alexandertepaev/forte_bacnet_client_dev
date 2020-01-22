@@ -97,7 +97,7 @@ const char* CBacnetWritePropertyConfigFB::init(){
 
   m_stServiceConfig = new ServiceConfig(DeviceID(), getObjectType(ObjectType()), ObjectID(), getObjectProperty(ObjectProperty()), BACNET_ARRAY_ALL, Priority());
 
-  //TODO if not analog input/value/object and not binary input/value/object and not present value - return -1 --- for now only allow these type of operations
+  //TODO if not analog input/value/object and not binary input/value/object and not present value/cov increment - return -1 --- for now only allow these type of operations
 
   clictr->addAddrListEntry(m_stServiceConfig->mDeviceId);
 

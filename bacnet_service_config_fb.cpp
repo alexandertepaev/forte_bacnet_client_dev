@@ -28,6 +28,8 @@ BACNET_OBJECT_TYPE CBacnetServiceConfigFB::getObjectType(CIEC_WSTRING paObjectTy
 BACNET_PROPERTY_ID CBacnetServiceConfigFB::getObjectProperty(CIEC_WSTRING paObjectProperty) {
   if(paObjectProperty == "PRESENT_VALUE"){
     return BACNET_PROPERTY_ID::PROP_PRESENT_VALUE;
+  } else if (paObjectProperty == "COV_INCREMENT") {
+    return BACNET_PROPERTY_ID::PROP_COV_INCREMENT;
   }
 }
 

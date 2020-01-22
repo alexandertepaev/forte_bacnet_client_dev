@@ -56,7 +56,7 @@ void CBacnetClientConfigFB::executeEvent(int pa_nEIID){
 
 forte::core::io::IODeviceController* CBacnetClientConfigFB::createDeviceController(CDeviceExecution& paDeviceExecution){
   m_nId = sm_nControllerInstances++;
-  DEVLOG_DEBUG("[CBacnetClientConfigFB] createDeviceController(): Creating client controller\n");
+  DEVLOG_DEBUG("[CBacnetClientConfigFB] createDeviceController(): Creating client controller id=%d\n", m_nId);
   return new CBacnetClientController(paDeviceExecution, m_nId);
   // return new BacnetClientController(paDeviceExecution);
   //return 0;
