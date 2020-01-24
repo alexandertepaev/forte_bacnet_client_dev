@@ -17,7 +17,10 @@
 DEFINE_FIRMWARE_FB(CBacnetWritePropertyConfigFB, g_nStringIdBACnetWriteProperty)
 
 const char* const CBacnetWritePropertyConfigFB::scmError = "Failed";
+const char* const CBacnetWritePropertyConfigFB::scmAddrFetchFailed = "Address fetch failed";
 const char* const CBacnetWritePropertyConfigFB::scmOK = "Initialized";
+const char* const CBacnetWritePropertyConfigFB::scmHandleInitFailed = "Handle initialization failed";
+
 
 const CStringDictionary::TStringId CBacnetWritePropertyConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdObserverName, g_nStringIdDeviceID, g_nStringIdObjectType, g_nStringIdObjectID, g_nStringIdObjectProperty, g_nStringIdPriority, g_nStringIdArrayIndex};
 
@@ -47,8 +50,11 @@ void CBacnetWritePropertyConfigFB::executeEvent(int pa_nEIID){
     DEVLOG_DEBUG("[BACnetWritePropertyConfigFB] init event\n");
     // todo error message if init() return -1
     const char* const error = init();
-    QO() = error == 0;
-    STATUS() = scmOK;
+    if(error){
+      QO() = false;
+      STATUS() = error;
+    }
+    
 
     if(BACnetAdapterOut().getPeer() == 0) {
       // backpropagate inito
@@ -66,44 +72,44 @@ void CBacnetWritePropertyConfigFB::executeEvent(int pa_nEIID){
      // backpropagate inito
       BACnetAdapterIn().QO() = BACnetAdapterOut().QO() && QO();
       sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
+  } else if(cg_nExternalEventID == pa_nEIID){
+    switch(mNotificationType){
+      case e_Success:
+        QO() = true;
+        STATUS() = scmOK;
+        break;
+      case e_AddrFetchFailed:
+        QO() = false;
+        STATUS() = scmAddrFetchFailed;
+        break;
+      case e_COVSubscriptionFailed:
+        break;
+      default:
+        break;
+    }
   }
 }
-
-/*
-
-*** TODO: move this somewhere?
-    functions that return bacnet libs encodings
-*/
-// BACNET_OBJECT_TYPE CBacnetWritePropertyConfigFB::getObjectType(CIEC_WSTRING paObjectType){
-//   if(paObjectType == "ANALOG_OUTPUT"){
-//     return BACNET_OBJECT_TYPE::OBJECT_ANALOG_OUTPUT;
-//   } else if (paObjectType == "BINARY_OUTPUT") {
-//     return BACNET_OBJECT_TYPE::OBJECT_BINARY_OUTPUT;
-//   }
-// }
-
-// uint32_t CBacnetWritePropertyConfigFB::getObjectProperty(CIEC_WSTRING paObjectProperty){
-//   if(paObjectProperty == "PRESENT_VALUE"){
-//     return PROP_PRESENT_VALUE;
-//   }
-// }
 
 
 const char* CBacnetWritePropertyConfigFB::init(){
 
+  setEventChainExecutor(m_poInvokingExecEnv);
+
   m_nIndex = BACnetAdapterIn().Index();
-  forte::core::io::IOConfigFBMultiMaster *master = forte::core::io::IOConfigFBMultiMaster::getMasterById(BACnetAdapterIn().MasterId());
+
+  CBacnetClientConfigFB *master = CBacnetClientConfigFB::getClientConfigFB(); // TODO check if master is not NULL
   CBacnetClientController *clictr = static_cast<CBacnetClientController *>(master->getDeviceController());
 
   m_stServiceConfig = new ServiceConfig(DeviceID(), getObjectType(ObjectType()), ObjectID(), getObjectProperty(ObjectProperty()), BACNET_ARRAY_ALL, Priority());
 
-  //TODO if not analog input/value/object and not binary input/value/object and not present value/cov increment - return -1 --- for now only allow these type of operations
-
-  clictr->addAddrListEntry(m_stServiceConfig->mDeviceId);
-
-  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, m_nIndex, SERVICE_CONFIRMED_WRITE_PROPERTY, this);
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, SERVICE_CONFIRMED_WRITE_PROPERTY, this);
      
-  clictr->addHandle(desc); 
+  clictr->addHandle(desc);
+
+  if(mServiceHandle == 0) {
+    return scmHandleInitFailed;
+  }
+  clictr->updateSCFBsList(this);
 
   return 0;
 }

@@ -1,6 +1,6 @@
 #include "bacnet_client_controller.h"
 
-CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceMultiController(paDeviceExecution), m_nControllerID(id), m_nSendRingbufferHeadIndex(0), m_nSendRingbufferSize(0), m_nSendRingbufferTailIndex(0), pmObjectList(0), pmServiceList(0), mBacnetSocket(0), m_eClienControllerState(e_Init), pmAddrList(0), invoke_id(0), pmCOVSubList(0)
+CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceController(paDeviceExecution), m_nControllerID(id), m_nSendRingbufferHeadIndex(0), m_nSendRingbufferSize(0), m_nSendRingbufferTailIndex(0), mBacnetSocket(0), m_eClientControllerState(e_Init), pmAddrList(0), invoke_id(0), pmServiceConfigFBsList(0), pmCOVSubscribers(0)
 {
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
   
@@ -22,18 +22,15 @@ void CBacnetClientController::setConfig(Config* paConfig) {
 
 
 const char* CBacnetClientController::init() {
-  // object list
-  pmObjectList = new TBacnetObjectList(); //TODO: not used 
-  pmObjectList->pushBack(new CBacnetDeviceObject(m_stConfig.nDeviceObjID, m_stConfig.sDeviceObjName)); // TODO: not used
-  // service list
-  pmServiceList = new TBacnetServiceHandleList(); //TODO: not used
+  // SCFB list
+  pmServiceConfigFBsList = new TServiceConfigFBsList();
   // ringbuffer
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
-  m_nSendRingbufferHeadIndex = m_nSendRingbufferTailIndex = m_nSendRingbufferSize = 0; 
+  m_nSendRingbufferHeadIndex = m_nSendRingbufferTailIndex = m_nSendRingbufferSize = 0; // TODO struct for ringbuffer?
   //addr list
   pmAddrList = new TBacnetAddrList();
   //subs list
-  pmCOVSubList = new TBacnetCOVSubList();
+  pmCOVSubscribers = new TBacnetCOVSubList();
   
   // init addresses
   initNetworkAddresses();
@@ -125,7 +122,7 @@ int CBacnetClientController::sendPacket(uint8_t *buffer, uint16_t len, struct in
 
   int send_len = sendto(mBacnetSocket, (char *) buffer, len, 0, (struct sockaddr *) &bvlc_dest, sizeof(struct sockaddr));
   if(send_len > 0){
-    DEVLOG_DEBUG("[CBacnetClientController] Sent a BACnet packet of length %d: ", send_len);
+    DEVLOG_DEBUG("[CBacnetClientController] Sent a BACnet packet of length %d\n", send_len);
   } else {
     DEVLOG_DEBUG("[CBacnetClientController] sendto() failed\n");
   }
@@ -145,7 +142,7 @@ int CBacnetClientController::receivePacket(uint8_t *buffer, size_t buffer_size, 
     socklen_t srcLen = sizeof(src);
     int rcv_retval = recvfrom(mBacnetSocket, buffer, buffer_size, 0, (sockaddr *) &src, &srcLen);
     if(rcv_retval > 0) {
-      DEVLOG_DEBUG("[CBacnetClientController] Received a BACnet packet of length %d: ", rcv_retval);
+      DEVLOG_DEBUG("[CBacnetClientController] Received a BACnet packet of length %d\n", rcv_retval);
     } else  {
       DEVLOG_DEBUG("[CBacnetClientController] recvfrom() failed\n");
     }
@@ -188,6 +185,7 @@ BACNET_ADDRESS CBacnetClientController::ipToBacnetAddress(struct in_addr paDevic
 }
 
 //TODO: private, rename to sendWhoIs(uint32_t device_id, uint8_t *buffer)
+//_TODO: use this code snippet in the main loop
 void CBacnetClientController::buildWhoIsAndSend(uint32_t device_id, uint8_t *buffer) {
   uint16_t len = encodeWhoIs(device_id, buffer);
   
@@ -218,11 +216,77 @@ int CBacnetClientController::encodeWhoIs(uint32_t device_id, uint8_t *buffer){
   return pdu_len;
 }
 
+/*
+  switch(m_eClientControllerState){
+    case e_AddressDiscovery:
+      discoverNetworkAddresses();
+      m_eClientControllerState = e_COVSubscription;
+      break;
+    case e_COVSubscription:
+      subscribeToCOVNotifications();
+      m_eClientControllerState = e_Operation;
+      break;
+    case e_Operation:
+      //processOutputRingbuffer();
+      performOperationCycleStep();
+      break;
+    default:
+      break;
+  }
+
+  ---
+
+  discoverNetworkAddresses() {
+    TBacnetAddrList::Iterator itEnd = pmAddrList->end();
+    for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it) {
+      sendWhoIs((*it)->mDeviceId);
+
+      timespec current_time;
+      clock_gettime(CLOCK_MONOTONIC, current_time);
+      while((*it)->mAddr == 0  && !timeoutMillis(500, current_time)){
+        receiveIAm((*it)->mDeviceId);
+      }
+
+      if((*it)->mAddr != 0){
+        notifyConfigFBsAboutAddrDiscorvery((*it)->mDeviceId, CBacnetServiceConfigFB::e_Success);
+      } else {
+        notifyConfigFBsAboutAddrDiscorvery((*it)->mDeviceId, CBacnetServiceConfigFB::e_AddrFetchFailed);
+        pmAddrList->erase(*it);
+      }
+
+    }
+  }
+
+  subscribeToCOVNotifications() {
+    TBacnetCOVSubList::Iterator itEnd = pmCOVSubscribers->end();
+    for(TBacnetCOVSubList::Iterator it = pmCOVSubscribers->begin(); it != itEnd; ++it) {
+
+      sendUnconfirmedCOVSubscribe((*it));
+
+      timespec current_time;
+      clock_gettime(CLOCK_MONOTONIC, current_time);
+      while(!(*it)->mSubscribtionAcknowledged && !timeoutMillis(500, current_time)) {
+        receiveCOVSubscriptionAck();
+      }
+
+      if((*it)->subscriptionAcknowledged){
+        (*it)->mServiceConfigFB->setNotificationType(CBacnetServiceConfigFB::e_Success);
+        startNewEventChain((*it)->mServiceConfigFB);
+      } else {
+        (*it)->mServiceConfigFB->setNotificationType(CBacnetServiceConfigFB::e_COVSubscriptionFailed);
+        startNewEventChain((*it)->mServiceConfigFB);
+        pmCOVSubscribers->erase((*it));
+      }
+
+    }
+  }
+*/
+
 void CBacnetClientController::runLoop() {
   DEVLOG_DEBUG("[CBacnetClientController] runLoop(): Starting controller loop\n");
   while(isAlive()) {
 
-   if (m_eClienControllerState == e_AddressFetch) {
+   if (m_eClientControllerState == e_AddressFetch) {
 
       TBacnetAddrList::Iterator itEnd = pmAddrList->end();
       for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it) {
@@ -249,27 +313,55 @@ void CBacnetClientController::runLoop() {
         if(!(*it)->mAddrInitFlag) {
           DEVLOG_DEBUG("[CBacnetClientController] Couldn't fetch address for device %d\n", (*it)->mDeviceId);
           // TODO: notify SCFB - update STATUS+QO and trigger IND event
-          // TODO: remove from addr list, derigister handle
+
+          // notify all scfbs about addr fetch faliure
+          TServiceConfigFBsList::Iterator _itEnd = pmServiceConfigFBsList->end();
+          for(TServiceConfigFBsList::Iterator _it = pmServiceConfigFBsList->begin(); _it != _itEnd; ++_it){
+            if((*it)->mDeviceId == (*_it)->m_stServiceConfig->mDeviceId){
+              (*_it)->setNotificationType(CBacnetServiceConfigFB::e_AddrFetchFailed);
+              startNewEventChain((*_it));
+              pmServiceConfigFBsList->erase((*_it));
+            }
+          }
 
           //remove from COVSubscribe list
-          TBacnetCOVSubList::Iterator subCOVItEnd = pmCOVSubList->end();
-          for(TBacnetCOVSubList::Iterator subCOVIt = pmCOVSubList->begin(); subCOVIt != subCOVItEnd; ++subCOVIt) {
-            if((*subCOVIt)->mSubscriptionConfig->mDeviceId == (*it)->mDeviceId)
-              pmCOVSubList->erase((*subCOVIt));
+          TBacnetCOVSubList::Iterator subCOVItEnd = pmCOVSubscribers->end();
+          for(TBacnetCOVSubList::Iterator subCOVIt = pmCOVSubscribers->begin(); subCOVIt != subCOVItEnd; ++subCOVIt) {
+            if((*subCOVIt)->mServiceConfigFB->m_stServiceConfig->mDeviceId == (*it)->mDeviceId)
+              pmCOVSubscribers->erase((*subCOVIt));
           }
-        } //TODO else notify scfb about success?
+
+          //TODO erase from SCFB list
+
+          // erase from addr table
+          pmAddrList->erase((*it));
+
+        
+        } else {
+
+          // notify all fbs but cov subsribers about addr fetch success
+          TServiceConfigFBsList::Iterator _itEnd = pmServiceConfigFBsList->end();
+          for(TServiceConfigFBsList::Iterator _it = pmServiceConfigFBsList->begin(); _it != _itEnd; ++_it){
+            if((*it)->mDeviceId == (*_it)->m_stServiceConfig->mDeviceId && (*_it)->mServiceType != CBacnetServiceConfigFB::EServiceType::e_UnconfirmedCOVSub){
+
+              (*_it)->setNotificationType(CBacnetServiceConfigFB::e_Success);
+              startNewEventChain((*_it));
+            
+            }
+          }
+
+        } 
       }
       
-      m_eClienControllerState = e_COVSubscription; 
+      m_eClientControllerState = e_COVSubscription; 
 
-   } else if (m_eClienControllerState == e_COVSubscription) {
+   } else if (m_eClientControllerState == e_COVSubscription) {
 
-      TBacnetCOVSubList::Iterator itEnd = pmCOVSubList->end();
-      for(TBacnetCOVSubList::Iterator it = pmCOVSubList->begin(); it != itEnd; ++it) {
+      TBacnetCOVSubList::Iterator itEnd = pmCOVSubscribers->end();
+      for(TBacnetCOVSubList::Iterator it = pmCOVSubscribers->begin(); it != itEnd; ++it) {
         uint8_t pdu[MAX_MPDU];
-        buildSubscribeCOVAndSend((*it)->mSubscriptionConfig, pdu, (*it)->mAssignedInvokeId);
+        buildSubscribeCOVAndSend((*it)->mServiceConfigFB->m_stServiceConfig, pdu, (*it)->mAssignedInvokeId);
       
-
         struct timespec t1, t2, tdiff;
         uint16_t millis_elapsed = 0;
         clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -286,12 +378,21 @@ void CBacnetClientController::runLoop() {
           millis_elapsed = round(tdiff.tv_nsec / 1.0e6) + tdiff.tv_sec * 1000; 
         }
 
+        if(!(*it)->mSubscriptionAcknowledged){
+          (*it)->mServiceConfigFB->setNotificationType(CBacnetServiceConfigFB::e_COVSubscriptionFailed);
+          startNewEventChain((*it)->mServiceConfigFB);
+          pmCOVSubscribers->erase((*it));
+        } else {
+          (*it)->mServiceConfigFB->setNotificationType(CBacnetServiceConfigFB::e_Success);
+          startNewEventChain((*it)->mServiceConfigFB);
+        }
         //TODO notify scfb about failure/success? see line 725
 
       }
 
-      m_eClienControllerState = e_Operating;
-   } else if (m_eClienControllerState == e_Operating) {
+
+      m_eClientControllerState = e_Operating;
+   } else if (m_eClientControllerState == e_Operating) {
     //consume from ringbuffer
     if(m_nSendRingbufferSize != 0) {
       CBacnetServiceHandle *handle = consumeFromRingbuffer();
@@ -302,7 +403,8 @@ void CBacnetClientController::runLoop() {
     // TODO: check return value
     receiveAndHandle();
 
-    //TODO: push the InvokeId+Handle to a list (stack) and, if receive and handle returns 0 and timeout, remove it from the list (erase)
+
+    //TODO: push the InvokeId+Handle to a list (queue) and, if receive and handle returns 0 and timeout, remove it from the list (erase) and set handle's state to Idle + notify config fb - Connection Lost
    }
     
   }
@@ -569,7 +671,6 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
       return new CBacnetWritePropertyHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
       break;
     case SERVICE_CONFIRMED_SUBSCRIBE_COV:
-      
       return new CBacnetUnconfirmedCOVHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
       break;
     default:
@@ -579,14 +680,6 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
   }
 }
 
-
-void CBacnetClientController::addSlaveHandle(int index, forte::core::io::IOHandle* handle){
-  DEVLOG_DEBUG("[CBacnetClientController] addSlaveHandle(): Registering handle to controller\n");
-  CBacnetServiceHandle *bacnetHandle = static_cast<CBacnetServiceHandle *>(handle);
-  bacnetHandle->mConfigFB->setHandle(bacnetHandle);
-  //static_cast<CBacnetServiceHandle *>(handle)->mConfigFB->foo(handle);
-  
-}
 
 //TODO: public
 bool CBacnetClientController::pushToRingbuffer(CBacnetServiceHandle *handle) {
@@ -614,58 +707,13 @@ CBacnetServiceHandle * CBacnetClientController::consumeFromRingbuffer() {
 }
 
 void CBacnetClientController::initDone() {
-  if(m_eClienControllerState == e_Init) {
+  if(m_eClientControllerState == e_Init) {
     DEVLOG_DEBUG("[CBacnetClientController] initDone() - changing state from init to addr fetch\n");
-    m_eClienControllerState = e_AddressFetch;
+    populateAddrTable();
+    populateCOVSubscribers();
+    m_eClientControllerState = e_AddressFetch;
   }
 }
-
-//TODO: public
-bool CBacnetClientController::addAddrListEntry(uint32_t device_id) {
-  // check if entry already exists
-  TBacnetAddrList::Iterator itEnd = pmAddrList->end();
-  for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it){
-    if((*it)->mDeviceId == device_id) {
-      DEVLOG_DEBUG("[CBacnetClientController] addAddrListEntry() -- found duplicated entry, ignoring add\n");
-      return true;
-    }
-  }
-
-  SBacnetAddressListEntry *newElement = new SBacnetAddressListEntry();
-  newElement->mDeviceId = device_id;
-  newElement->mAddrInitFlag = false;
-  memset(&newElement->mAddr, 0, sizeof(struct in_addr));
-  newElement->mPort = 0;
-  pmAddrList->pushBack(newElement);
-
-  DEVLOG_DEBUG("[CBacnetClientController] addAddrListEntry() -- added new entry\n");
-  return true;
-}
-
-//TODO: public
-bool CBacnetClientController::addCOVSubListEntry(CBacnetServiceConfigFB::ServiceConfig *paConfig, CBacnetServiceHandle *paHandle) {
-  TBacnetCOVSubList::Iterator itEnd = pmCOVSubList->end();
-  for(TBacnetCOVSubList::Iterator it = pmCOVSubList->begin(); it != itEnd; ++it){
-    if((*it)->mSubscriptionConfig->mDeviceId == paConfig->mDeviceId &&
-        (*it)->mSubscriptionConfig->mObjectType == paConfig->mObjectType &&
-        (*it)->mSubscriptionConfig->mObjectId == paConfig->mObjectId) {
-          //TODO: different observers same device+object?
-      DEVLOG_DEBUG("[CBacnetClientController] addCOVSubListEntry() -- found duplicated entry, ignoring add\n");
-      return true;
-    }
-  }
-
-  SBacnetCOVSubsListEntry *newElement = new SBacnetCOVSubsListEntry();
-  newElement->mSubscriptionAcknowledged = false;
-  newElement->mAssignedInvokeId = 0;
-  newElement->mSubscriptionConfig = paConfig;
-  newElement->mHandle = paHandle;
-  pmCOVSubList->pushBack(newElement);
-
-  DEVLOG_DEBUG("[CBacnetClientController] addCOVSubListEntry() -- added new entry\n");
-  return true;
-}
-
 
 //TODO private
 void CBacnetClientController::buildSubscribeCOVAndSend(CBacnetServiceConfigFB::ServiceConfig *paConfig, uint8_t *buffer, uint8_t &paAssignedInvokeId) {
@@ -717,12 +765,13 @@ void CBacnetClientController::buildSubscribeCOVAndSend(CBacnetServiceConfigFB::S
 
 //TODO: private
 void CBacnetClientController::handleCOVSubscriptionAck(uint8_t *apdu, const uint32_t &apdu_len) {
+  /* Multiple subscription to the same (Device, ObjectType, ObjectID) tuple are sent multiple times -- fix it?*/
   uint8_t invoke_id = apdu[1];
-  TBacnetCOVSubList::Iterator itEnd = pmCOVSubList->end();
-  for(TBacnetCOVSubList::Iterator it = pmCOVSubList->begin(); it != itEnd; ++it){
+  TBacnetCOVSubList::Iterator itEnd = pmCOVSubscribers->end();
+  for(TBacnetCOVSubList::Iterator it = pmCOVSubscribers->begin(); it != itEnd; ++it){
     if((*it)->mAssignedInvokeId == invoke_id){
       (*it)->mSubscriptionAcknowledged = true;
-      static_cast<CBacnetUnconfirmedCOVHandle *>((*it)->mHandle)->subscriptionAcknowledged(); //TODO notify scfb? no need to store handle pointer
+      static_cast<CBacnetUnconfirmedCOVHandle *>((*it)->mServiceConfigFB->mServiceHandle)->subscriptionAcknowledged(); //TODO notify scfb? no need to store handle pointer
       DEVLOG_DEBUG("[CBacnetClientController] handleCOVSubscriptionAck() -- Subscription acknowledged!\n");
       break;
     }
@@ -745,22 +794,64 @@ void CBacnetClientController::handleUnconfirmedCOVNotifation(uint8_t *apdu, cons
   printf("Decoded Unconfirmed CoV Notification: PID=%d, DeviceId=%d, ObjectType=%d, ObjectId=%d, TimeRemaining=%d, Value=%d\n",
   cov_data.subscriberProcessIdentifier, cov_data.initiatingDeviceIdentifier, cov_data.monitoredObjectIdentifier.type, cov_data.monitoredObjectIdentifier.instance, cov_data.timeRemaining, property_value[0].value.type.Enumerated);
 
-  TBacnetCOVSubList::Iterator itEnd = pmCOVSubList->end();
-  for(TBacnetCOVSubList::Iterator it = pmCOVSubList->begin(); it != itEnd; ++it){
-    if((*it)->mSubscriptionConfig->mDeviceId == cov_data.initiatingDeviceIdentifier &&
-        (*it)->mSubscriptionConfig->mObjectType == cov_data.monitoredObjectIdentifier.type &&
-        (*it)->mSubscriptionConfig->mObjectId == cov_data.monitoredObjectIdentifier.instance) {
+  TBacnetCOVSubList::Iterator itEnd = pmCOVSubscribers->end();
+  for(TBacnetCOVSubList::Iterator it = pmCOVSubscribers->begin(); it != itEnd; ++it){
+    if((*it)->mServiceConfigFB->m_stServiceConfig->mDeviceId == cov_data.initiatingDeviceIdentifier &&
+        (*it)->mServiceConfigFB->m_stServiceConfig->mObjectType == cov_data.monitoredObjectIdentifier.type &&
+        (*it)->mServiceConfigFB->m_stServiceConfig->mObjectId == cov_data.monitoredObjectIdentifier.instance) {
 
-          static_cast<CBacnetUnconfirmedCOVHandle *>((*it)->mHandle)->notificationReceived(property_value[0]);
+          static_cast<CBacnetUnconfirmedCOVHandle *>((*it)->mServiceConfigFB->mServiceHandle)->notificationReceived(property_value[0]);
           
-          // CIEC_ANY value;
-          // if(property_value[0].value.tag == BACNET_APPLICATION_TAG_REAL) {
-          //   value.setValue(static_cast<CIEC_DWORD>(property_value[0].value.type.Real));
-          // } else if(property_value[0].value.tag == BACNET_APPLICATION_TAG_ENUMERATED){
-          //   value.setValue(static_cast<CIEC_BOOL>(property_value[0].value.type.Enumerated));
-          // }
-          // static_cast<CBacnetUnconfirmedCOVHandle *>((*it)->mHandle)->notificationReceived(&value);
     
+    }
+  }
+}
+
+void CBacnetClientController::updateSCFBsList(CBacnetServiceConfigFB *paConfigFB) {
+  pmServiceConfigFBsList->pushBack(paConfigFB);
+}
+
+void CBacnetClientController::populateAddrTable() {
+
+  TServiceConfigFBsList::Iterator itEnd = pmServiceConfigFBsList->end();
+  for(TServiceConfigFBsList::Iterator it = pmServiceConfigFBsList->begin(); it != itEnd; ++it){
+
+    if(!checkAddrTableForDuplicate((*it)->m_stServiceConfig->mDeviceId)) {
+
+      SBacnetAddressListEntry *newElement = new SBacnetAddressListEntry();
+      newElement->mDeviceId = (*it)->m_stServiceConfig->mDeviceId;
+      newElement->mAddrInitFlag = false;
+      memset(&newElement->mAddr, 0, sizeof(struct in_addr));
+      newElement->mPort = 0;
+      pmAddrList->pushBack(newElement);
+
+    }
+  }
+
+}
+
+bool CBacnetClientController::checkAddrTableForDuplicate(uint32_t device_id) {
+  TBacnetAddrList::Iterator itEnd = pmAddrList->end();
+  for(TBacnetAddrList::Iterator it = pmAddrList->begin(); it != itEnd; ++it){
+    if((*it)->mDeviceId == device_id) {
+      DEVLOG_DEBUG("[CBacnetClientController] checkAddrTableForDuplicate() - Found duplicated entry for %d, ignoring add\n", (*it)->mDeviceId);
+      return true;
+    }
+  }
+  return false;
+}
+
+void CBacnetClientController::populateCOVSubscribers() {
+  TServiceConfigFBsList::Iterator itEnd = pmServiceConfigFBsList->end();
+  for(TServiceConfigFBsList::Iterator it = pmServiceConfigFBsList->begin(); it != itEnd; ++it){
+
+    if((*it)->mServiceType == CBacnetServiceConfigFB::e_UnconfirmedCOVSub) {
+      SBacnetCOVSubsListEntry *newElement = new SBacnetCOVSubsListEntry();
+      newElement->mSubscriptionAcknowledged = false;
+      newElement->mAssignedInvokeId = getNextInvokeID();
+      newElement->mServiceConfigFB = (*it);
+      pmCOVSubscribers->pushBack(newElement);
+
     }
   }
 }

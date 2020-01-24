@@ -19,6 +19,7 @@
 #include "BACnetAdapter.h"
 #include "bacnet_service_config_fb.h"
 #include "bacnet_client_controller.h"
+#include "BACnetClient.h"
 
 
 #include "../../forte-incubation_1.11.0/src/core/io/configFB/io_master_multi.h"
@@ -27,7 +28,8 @@
 #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
 #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_handle.h"
 
-class CBacnetReadPropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
+//class CBacnetReadPropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
+  class CBacnetReadPropertyConfigFB: public CBacnetServiceConfigFB {
   DECLARE_FIRMWARE_FB(CBacnetReadPropertyConfigFB)
 
 private:
@@ -98,45 +100,23 @@ private:
 
   static const char* const scmError;
   static const char* const scmOK;
+  static const char* const scmHandleInitFailed;
+  static const char* const scmAddrFetchFailed;
 
 public:
 
+  CBacnetReadPropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
+  CBacnetServiceConfigFB(e_ReadProperty, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
 
-
-  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetReadPropertyConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB() {
   };
-
-  // CBacnetReadPropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
-  // forte::core::io::IOConfigFBBase( pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData), CBacnetServiceConfigFB() {
-
-  // };
-
 
   virtual ~CBacnetReadPropertyConfigFB(){};
 
-  /*  adding new config fields
-    struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
-      uint32_t dummy_value;
-      
-      ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paDummyValue) :
-      CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId, paObjectProperty, paArrayIndex), dummy_value(paDummyValue) {
-
-      };
-    };
-  */
   struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
 
     uint32_t mObjectProperty;
     uint32_t mArrayIndex;
     
-    // ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
-    // CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId, paObjectProperty, paArrayIndex) {
-    //   if(paPriority < 1 || paPriority > 16) {
-    //     mPriority = 16;
-    //   } else {
-    //     mPriority = paPriority;
-    //   }
-    // };
     ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex) :
     CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {
       

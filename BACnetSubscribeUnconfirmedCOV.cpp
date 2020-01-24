@@ -17,7 +17,10 @@
 DEFINE_FIRMWARE_FB(CBacnetSubscribeUnconfirmedCOVConfigFB, g_nStringIdBACnetSubscribeUnconfirmedCOV)
 
 const char* const CBacnetSubscribeUnconfirmedCOVConfigFB::scmError = "Failed";
+const char* const CBacnetSubscribeUnconfirmedCOVConfigFB::scmAddrFetchFailed = "Address fetch failed";
 const char* const CBacnetSubscribeUnconfirmedCOVConfigFB::scmOK = "Initialized";
+const char* const CBacnetSubscribeUnconfirmedCOVConfigFB::scmHandleInitFailed = "Handle initialization failed";
+const char* const CBacnetSubscribeUnconfirmedCOVConfigFB::scmCOVSubscriptionFailed = "COV subscription failed";
 
 const CStringDictionary::TStringId CBacnetSubscribeUnconfirmedCOVConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdObserverName, g_nStringIdDeviceID, g_nStringIdObjectType, g_nStringIdObjectID};
 
@@ -47,8 +50,10 @@ void CBacnetSubscribeUnconfirmedCOVConfigFB::executeEvent(int pa_nEIID){
     DEVLOG_DEBUG("[BacnetSubscribeUnconfirmedCOVConfigFB] init event\n");
     // todo error message if init() return -1
     const char* const error = init();
-    QO() = error == 0;
-    STATUS() = scmOK;
+    if(error){
+      QO() = false;
+      STATUS() = error;
+    }
 
     if(BACnetAdapterOut().getPeer() == 0) {
       // backpropagate inito
@@ -66,27 +71,45 @@ void CBacnetSubscribeUnconfirmedCOVConfigFB::executeEvent(int pa_nEIID){
      // backpropagate inito
       BACnetAdapterIn().QO() = BACnetAdapterOut().QO() && QO();
       sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
+  } else if(cg_nExternalEventID == pa_nEIID){
+    switch(mNotificationType){
+      case e_Success:
+        QO() = true;
+        STATUS() = scmOK;
+        break;
+      case e_AddrFetchFailed:
+        QO() = false;
+        STATUS() = scmAddrFetchFailed;
+        break;
+      case e_COVSubscriptionFailed:
+        QO() = false;
+        STATUS() = scmCOVSubscriptionFailed;
+        break;
+      default:
+        break;
+    }
   }
 }
 
 const char* CBacnetSubscribeUnconfirmedCOVConfigFB::init(){
 
+  setEventChainExecutor(m_poInvokingExecEnv);
+
   m_nIndex = BACnetAdapterIn().Index();
-  forte::core::io::IOConfigFBMultiMaster *master = forte::core::io::IOConfigFBMultiMaster::getMasterById(BACnetAdapterIn().MasterId());
+
+  CBacnetClientConfigFB *master = CBacnetClientConfigFB::getClientConfigFB(); // TODO check if master is not NULL
   CBacnetClientController *clictr = static_cast<CBacnetClientController *>(master->getDeviceController());
 
   m_stServiceConfig = new ServiceConfig(DeviceID(), getObjectType(ObjectType()), ObjectID());
 
-  // TODO if not analog input/value/object and not binary input/value/object and not present value - return -1 --- for now only allow these type of operations
-
-  clictr->addAddrListEntry(m_stServiceConfig->mDeviceId);
-  
-
-  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, m_nIndex, SERVICE_CONFIRMED_SUBSCRIBE_COV, this);
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, SERVICE_CONFIRMED_SUBSCRIBE_COV, this);
      
   clictr->addHandle(desc); 
 
-  clictr->addCOVSubListEntry(m_stServiceConfig, mServiceHandle);
+  if(mServiceHandle == 0) {
+    return scmHandleInitFailed;
+  } 
+  clictr->updateSCFBsList(this);
 
   return 0;
 }

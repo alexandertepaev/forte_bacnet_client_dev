@@ -22,7 +22,8 @@
 #include "bacnet_client_controller.h"
 
 
-class CBacnetWritePropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
+//class CBacnetWritePropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
+class CBacnetWritePropertyConfigFB: public CBacnetServiceConfigFB{ 
   DECLARE_FIRMWARE_FB(CBacnetWritePropertyConfigFB)
 
 private:
@@ -97,12 +98,19 @@ private:
 
   static const char* const scmError;
   static const char* const scmOK;
+  static const char* const scmAddrFetchFailed;
+  static const char* const scmHandleInitFailed;
 
 
 public:
-  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetWritePropertyConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB() {
+  // FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetWritePropertyConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB(e_WriteProperty) {
   
+  // };
+  CBacnetWritePropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
+  CBacnetServiceConfigFB(e_WriteProperty, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
+
   };
+
 
   virtual ~CBacnetWritePropertyConfigFB(){};
 
@@ -113,14 +121,6 @@ public:
     uint32_t mPriority;
     uint32_t mArrayIndex;
     
-    // ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
-    // CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId, paObjectProperty, paArrayIndex) {
-    //   if(paPriority < 1 || paPriority > 16) {
-    //     mPriority = 16;
-    //   } else {
-    //     mPriority = paPriority;
-    //   }
-    // };
     ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
     CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {
       if(paPriority < 1 || paPriority > 16) {
@@ -130,9 +130,6 @@ public:
       }
     };
   };
-
-  // BACNET_OBJECT_TYPE getObjectType(CIEC_WSTRING paObjectType);
-  // uint32_t getObjectProperty(CIEC_WSTRING paObjectProperty);
 
 };
 

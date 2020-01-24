@@ -2,7 +2,8 @@
 #define _BACNET_CLIENT_CONTROLLER_H_
 
 // #include <devexec.h>
-#include "../../forte-incubation_1.11.0/src/core/io/device/io_controller_multi.h"
+//#include "../../forte-incubation_1.11.0/src/core/io/device/io_controller_multi.h"
+#include "../../forte-incubation_1.11.0/src/core/io/device/io_controller.h"
 #include "../../forte-incubation_1.11.0/src/arch/utils/timespec_utils.h"
 
 #include "bacnet_device_object.h"
@@ -27,7 +28,9 @@
 
 class CBacnetServiceHandle;
 
-class CBacnetClientController: public forte::core::io::IODeviceMultiController {
+//class CBacnetClientController: public forte::core::io::IODeviceMultiController {
+  class CBacnetClientController: public forte::core::io::IODeviceController {
+  
   friend class CBacnetReadPropertyConfigFB;
   friend class CBacnetWritePropertyConfigFB;
   friend class CBacnetSubscribeUnconfirmedCOVConfigFB;
@@ -37,8 +40,6 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     ~CBacnetClientController();
 
     void setConfig(Config* paConfig);
-    void addSlaveHandle(int index, forte::core::io::IOHandle* handle);
-    void dropSlaveHandles(int index) {}; //TODO;
   
 
     // controller configuration
@@ -50,12 +51,21 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     };
     
 
-    class HandleDescriptor : public forte::core::io::IODeviceMultiController::HandleDescriptor {
+    // class HandleDescriptor : public forte::core::io::IODeviceMultiController::HandleDescriptor {
+    //   public:
+    //     CBacnetServiceConfigFB *mServiceConfigFB;
+    //     int mServiceType;
+
+    //     HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paSlaveIndex, int paServiceType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceMultiController::HandleDescriptor(paId, paDirection, paSlaveIndex), mServiceType(paServiceType), mServiceConfigFB(paServiceConfigFB) {
+    //     }
+    // };
+
+    class HandleDescriptor : public forte::core::io::IODeviceController::HandleDescriptor {
       public:
         CBacnetServiceConfigFB *mServiceConfigFB;
         int mServiceType;
 
-        HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paSlaveIndex, int paServiceType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceMultiController::HandleDescriptor(paId, paDirection, paSlaveIndex), mServiceType(paServiceType), mServiceConfigFB(paServiceConfigFB) {
+        HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paServiceType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceController::HandleDescriptor(paId, paDirection), mServiceType(paServiceType), mServiceConfigFB(paServiceConfigFB) {
         }
     };
 
@@ -100,6 +110,15 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
 
     void initDone(); // better naming?
 
+    // enum EServiceConfigFBNotificationType {
+    //   e_UnknownNotificationType,
+    //   e_Success,
+    //   e_AddrFetchFailed,
+    //   e_COVSubscriptionFailed
+    // };
+    // EServiceConfigFBNotificationType mServiceConfigFBNotificationType;
+
+
   protected:
     const char* init(); // Initialize the device object (call it's init function)
     void deInit() {}; //TODO
@@ -108,6 +127,13 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     bool checkSlaveType(int index, int type) {}; //TODO;
   
   private:
+
+    
+    // const char* mServiceConfigFBNotification;
+    // static const char* const scmAddrFetchFailed;
+    // static const char* const scmCOVSubscriptionFailed;
+    // static const char* const scmOK;
+
     bool isSlaveAvailable(int index) {}; //TODO;
 
     // controller instance id
@@ -151,7 +177,7 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     enum EBacnetClientControllerState {
       e_Init, e_AddressFetch, e_COVSubscription, e_Operating 
     };
-    EBacnetClientControllerState m_eClienControllerState;
+    EBacnetClientControllerState m_eClientControllerState;
 
     // addr list
     struct SBacnetAddressListEntry {
@@ -162,19 +188,22 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     };
     typedef CSinglyLinkedList<SBacnetAddressListEntry *> TBacnetAddrList;
     TBacnetAddrList *pmAddrList;
-    bool addAddrListEntry(uint32_t device_id);
     int encodeWhoIs(uint32_t device_id, uint8_t *buffer);
 
     // cov subs list
-    struct SBacnetCOVSubsListEntry {
-      bool mSubscriptionAcknowledged;
-      uint8_t mAssignedInvokeId;
-      CBacnetServiceHandle *mHandle;
-      CBacnetServiceConfigFB::ServiceConfig *mSubscriptionConfig;
-    };
-    typedef CSinglyLinkedList<SBacnetCOVSubsListEntry *> TBacnetCOVSubList;
-    TBacnetCOVSubList *pmCOVSubList;
-    bool addCOVSubListEntry(CBacnetServiceConfigFB::ServiceConfig *paConfig, CBacnetServiceHandle *paHandle);
+    // struct SBacnetCOVSubsListEntry {
+    //   bool mSubscriptionAcknowledged;
+    //   uint8_t mAssignedInvokeId;
+    //   CBacnetServiceHandle *mHandle;
+    //   CBacnetServiceConfigFB::ServiceConfig *mSubscriptionConfig;
+    // };
+    // typedef CSinglyLinkedList<SBacnetCOVSubsListEntry *> TBacnetCOVSubList;
+    // TBacnetCOVSubList *pmCOVSubList;
+
+    typedef CSinglyLinkedList<CBacnetServiceConfigFB *> TServiceConfigFBsList;
+    TServiceConfigFBsList *pmServiceConfigFBsList;
+    void updateSCFBsList(CBacnetServiceConfigFB *paConfigFB);
+
     void buildSubscribeCOVAndSend(CBacnetServiceConfigFB::ServiceConfig *paConfig, uint8_t *buffer, uint8_t &paAssignedInvokeId);
     void handleCOVSubscriptionAck(uint8_t *apdu, const uint32_t &apdu_len);
     void handleUnconfirmedCOVNotifation(uint8_t *apdu, const uint32_t &apdu_len);
@@ -183,6 +212,18 @@ class CBacnetClientController: public forte::core::io::IODeviceMultiController {
     int receivePacket(uint8_t *buffer, size_t buffer_size, uint16_t timeout, sockaddr_in &src);
     bool getAddressByDeviceId(uint32_t paDeviceId, struct in_addr &paDeviceAddr, uint16_t &paDeviceAddrPort);
     BACNET_ADDRESS ipToBacnetAddress(struct in_addr paDeviceAddr, uint16_t paPort, bool paBroadcastAddr);
+
+    void populateAddrTable();
+    bool checkAddrTableForDuplicate(uint32_t device_id);
+    // cov subs list
+    struct SBacnetCOVSubsListEntry {
+      bool mSubscriptionAcknowledged;
+      uint8_t mAssignedInvokeId;
+      CBacnetServiceConfigFB *mServiceConfigFB;
+    };
+    typedef CSinglyLinkedList<SBacnetCOVSubsListEntry *> TBacnetCOVSubList;
+    TBacnetCOVSubList *pmCOVSubscribers;
+    void populateCOVSubscribers();
 
     
 };

@@ -2,15 +2,17 @@
 #define _BACNET_SERVICE_CONFIG_FB_H_
 
 #include"../../forte-incubation_1.11.0/src/core/io/configFB/io_master_multi.h"
+#include"../../forte-incubation_1.11.0/src/core/io/configFB/io_base.h"
 #include "../../forte-incubation_1.11.0/src/core/io/device/io_controller_multi.h"
 #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
 
 #include "include/bacnet.h"
+//#include "bacnet_client_controller.h"
 // #include "bacnet_service_handle.h"
 
 class CBacnetServiceHandle;
 
-class CBacnetServiceConfigFB
+class CBacnetServiceConfigFB: public forte::core::io::IOConfigFBBase
 {
 private:
   /* data */
@@ -22,7 +24,16 @@ protected:
 
 
 public:
-  CBacnetServiceConfigFB(/* args */);
+
+  enum EServiceType {
+    e_ReadProperty,
+    e_WriteProperty,
+    e_UnconfirmedCOVSub,
+  };
+
+  EServiceType mServiceType;
+
+  CBacnetServiceConfigFB(EServiceType paServiceType, CResource *paSrcRes, const SFBInterfaceSpec *paInterfaceSpec, const CStringDictionary::TStringId paInstanceNameId, TForteByte *paFBConnData, TForteByte *paFBVarsData);
   ~CBacnetServiceConfigFB();
 
   // rework
@@ -30,25 +41,31 @@ public:
     uint32_t mDeviceId;
     uint32_t mObjectType;
     uint32_t mObjectId;
-    //uint32_t mObjectProperty;
-    //uint32_t mArrayIndex;
-
-    // ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex) :
-    // mDeviceId(paDeviceId), mObjectType(paObjectType), mObjectId(paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {
-
-    // }
+  
     ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId) :
     mDeviceId(paDeviceId), mObjectType(paObjectType), mObjectId(paObjectId) {
 
     }
   };
 
-  //void foo(forte::core::io::IOHandle* handle);
   void setHandle(CBacnetServiceHandle* handle);
   
 
   ServiceConfig *m_stServiceConfig;
   CBacnetServiceHandle *mServiceHandle;
+
+  
+
+  enum EServiceConfigFBNotificationType {
+      e_UnknownNotificationType,
+      e_AddrFetchFailed,
+      e_COVSubscriptionFailed,
+      e_Success,
+  };
+
+  EServiceConfigFBNotificationType mNotificationType;
+
+  void setNotificationType(EServiceConfigFBNotificationType paNotificationType);
 
 };
 

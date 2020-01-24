@@ -25,12 +25,17 @@
 
 #include "include/bacnet.h"
 
-class CBacnetClientConfigFB: public forte::core::io::IOConfigFBMultiMaster{
+//class CBacnetClientConfigFB: public forte::core::io::IOConfigFBMultiMaster{
+  class CBacnetClientConfigFB: public forte::core::io::IOConfigFBController{
   DECLARE_FIRMWARE_FB(CBacnetClientConfigFB)
 
 private:
   static const CStringDictionary::TStringId scm_anDataInputNames[];
   static const CStringDictionary::TStringId scm_anDataInputTypeIds[];
+
+  static CBacnetClientConfigFB *mBacnetClientConfigFB;
+
+  
   CIEC_BOOL &QI() {
     return *static_cast<CIEC_BOOL*>(getDI(0));
   };
@@ -91,7 +96,9 @@ private:
 
 public:
  
-  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetClientConfigFB, forte::core::io::IOConfigFBMultiMaster){
+  // FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetClientConfigFB, forte::core::io::IOConfigFBMultiMaster){
+  // }
+  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetClientConfigFB, forte::core::io::IOConfigFBController){
   }
 
   virtual ~CBacnetClientConfigFB(){};
@@ -99,6 +106,8 @@ public:
   forte::core::io::IODeviceController* createDeviceController(CDeviceExecution& paDeviceExecution);
 
   void setConfig();
+
+  static CBacnetClientConfigFB* getClientConfigFB();
 
 };
 

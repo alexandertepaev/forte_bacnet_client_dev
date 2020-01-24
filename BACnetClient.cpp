@@ -16,6 +16,8 @@
 
 DEFINE_FIRMWARE_FB(CBacnetClientConfigFB, g_nStringIdBACnetClient)
 
+CBacnetClientConfigFB *CBacnetClientConfigFB::mBacnetClientConfigFB = NULL;
+
 const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdPort, g_nStringIdDeviceObjectID, g_nStringIdDeviceObjectName, g_nStringIdPathToAddrFile};
 
 const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputTypeIds[] = {g_nStringIdBOOL, g_nStringIdUINT, g_nStringIdUINT, g_nStringIdWSTRING, g_nStringIdWSTRING};
@@ -80,9 +82,15 @@ void CBacnetClientConfigFB::onStartup(){
     static_cast<CBacnetClientController *>(getDeviceController())->initDone();
     return IOConfigFBController::onStartup();
   }
+
+  CBacnetClientConfigFB::mBacnetClientConfigFB = this;
   // pass BACnetAdatper.INIT event
   BACnetAdapterOut().MasterId() = m_nId;
-  BusAdapterOut().Index() = 1;
+  BACnetAdapterOut().Index() = 1;
   sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, BACnetAdapter::scm_nEventINITID);
+}
+
+CBacnetClientConfigFB* CBacnetClientConfigFB::getClientConfigFB() {
+  return CBacnetClientConfigFB::mBacnetClientConfigFB;
 }
 

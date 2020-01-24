@@ -20,7 +20,8 @@
 #include "bacnet_service_config_fb.h"
 #include "bacnet_client_controller.h"
 
-class CBacnetSubscribeUnconfirmedCOVConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB {
+// class CBacnetSubscribeUnconfirmedCOVConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB {
+class CBacnetSubscribeUnconfirmedCOVConfigFB: public CBacnetServiceConfigFB {
   DECLARE_FIRMWARE_FB(CBacnetSubscribeUnconfirmedCOVConfigFB)
 
 private:
@@ -83,10 +84,15 @@ private:
 
   static const char* const scmError;
   static const char* const scmOK;
+  static const char* const scmAddrFetchFailed;
+  static const char* const scmHandleInitFailed;
+  static const char* const scmCOVSubscriptionFailed;
 
 public:
-  FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetSubscribeUnconfirmedCOVConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB() {
-  
+
+  CBacnetSubscribeUnconfirmedCOVConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
+  CBacnetServiceConfigFB(e_UnconfirmedCOVSub, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
+
   };
 
   virtual ~CBacnetSubscribeUnconfirmedCOVConfigFB(){};

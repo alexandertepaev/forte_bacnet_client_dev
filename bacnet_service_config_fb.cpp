@@ -1,6 +1,6 @@
 #include "bacnet_service_config_fb.h"
 
-CBacnetServiceConfigFB::CBacnetServiceConfigFB(/* args */) : m_stServiceConfig(0)
+CBacnetServiceConfigFB::CBacnetServiceConfigFB(EServiceType paServiceType, CResource *paSrcRes, const SFBInterfaceSpec *paInterfaceSpec, const CStringDictionary::TStringId paInstanceNameId, TForteByte *paFBConnData, TForteByte *paFBVarsData): forte::core::io::IOConfigFBBase(paSrcRes, paInterfaceSpec, paInstanceNameId, paFBConnData, paFBVarsData), mServiceType(paServiceType), m_stServiceConfig(0), mServiceHandle(0), mNotificationType(e_UnknownNotificationType)
 {
 }
 
@@ -33,10 +33,11 @@ BACNET_PROPERTY_ID CBacnetServiceConfigFB::getObjectProperty(CIEC_WSTRING paObje
   }
 }
 
-// void CBacnetServiceConfigFB::foo(forte::core::io::IOHandle* handle) {
-//   //mServiceHandle = static_cast<CBacnetServiceHandle *>(handle);
-//   DEVLOG_DEBUG("foo test kuku\n");
-// }
 void CBacnetServiceConfigFB::setHandle(CBacnetServiceHandle* handle) {
   mServiceHandle = handle;
+}
+
+
+void CBacnetServiceConfigFB::setNotificationType(EServiceConfigFBNotificationType paNotifycationType) {
+  mNotificationType = paNotifycationType;
 }
