@@ -28,7 +28,6 @@
 
 class CBacnetServiceHandle;
 
-//class CBacnetClientController: public forte::core::io::IODeviceMultiController {
   class CBacnetClientController: public forte::core::io::IODeviceController {
   
   friend class CBacnetReadPropertyConfigFB;
@@ -49,16 +48,6 @@ class CBacnetServiceHandle;
       char *sDeviceObjName;
       char *sPathToAddrFile;
     };
-    
-
-    // class HandleDescriptor : public forte::core::io::IODeviceMultiController::HandleDescriptor {
-    //   public:
-    //     CBacnetServiceConfigFB *mServiceConfigFB;
-    //     int mServiceType;
-
-    //     HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paSlaveIndex, int paServiceType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceMultiController::HandleDescriptor(paId, paDirection, paSlaveIndex), mServiceType(paServiceType), mServiceConfigFB(paServiceConfigFB) {
-    //     }
-    // };
 
     class HandleDescriptor : public forte::core::io::IODeviceController::HandleDescriptor {
       public:
@@ -69,10 +58,6 @@ class CBacnetServiceHandle;
         }
     };
 
-    // functions like - service handles (eg. ReadProperty - has to be supported - iterate through the object list and read the property)
-    //                - sending functions (sending functions have to be implemented in CBacnetServiceHandle)
-    //
-
     const int& getSocket() {
       return mBacnetSocket;
     }
@@ -80,24 +65,10 @@ class CBacnetServiceHandle;
     bool pushToRingbuffer(CBacnetServiceHandle *handle);
     CBacnetServiceHandle * consumeFromRingbuffer();
 
-    void decodeBacnetPacket(uint8_t *pdu, uint16_t len);
-
-    /*void decodeBacnetBVLC(uint8_t *pdu, uint16_t len, sockaddr_in *src);
-    int decodeBacnetBVLC_(uint8_t *pdu, uint16_t &npdu_len);
-    int decodeBacnetAPDU_(uint8_t *pdu, uint16_t &apdu_len, uint8_t &apdu_type);*/
-
-    void buildPacketAndSend(CBacnetServiceHandle *handle);
-    void receiveAndHandle();
     bool decodeNPDU(uint8_t *pdu, uint32_t &apdu_offset, uint32_t &apdu_len, uint8_t &apdu_type, uint8_t &service_choice);
-    void handleAPDU(uint8_t *apdu, const uint32_t &apdu_len, const uint8_t &apdu_type, const uint8_t &service_choice, const struct sockaddr_in &src);
-    void handleRPAck(uint8_t *apdu, const uint32_t &apdu_len);
-    void handleWPAck(uint8_t *apdu, const uint32_t &apdu_len);
-
-    void buildWhoIsAndSend(uint32_t device_id, uint8_t *buffer);
-    void decodeAndHandleIAm(uint8_t *apdu, const uint32_t &apdu_len, const struct sockaddr_in &src);
+    void handleAPDU(uint8_t *apdu, const uint32_t &apdu_len, const uint8_t &apdu_type, const uint8_t &service_choice);
 
     sockaddr_in getMyNetworkAddress();
-    sockaddr_in mMyNetworkAddress;
 
     bool initNetworkAddresses();
     struct in_addr mLocalAddr;
@@ -110,46 +81,20 @@ class CBacnetServiceHandle;
 
     void initDone(); // better naming?
 
-    // enum EServiceConfigFBNotificationType {
-    //   e_UnknownNotificationType,
-    //   e_Success,
-    //   e_AddrFetchFailed,
-    //   e_COVSubscriptionFailed
-    // };
-    // EServiceConfigFBNotificationType mServiceConfigFBNotificationType;
-
-
   protected:
     const char* init(); // Initialize the device object (call it's init function)
     void deInit() {}; //TODO
     void runLoop();
     forte::core::io::IOHandle* initHandle(IODeviceController::HandleDescriptor *handleDescriptor);
-    bool checkSlaveType(int index, int type) {}; //TODO;
   
   private:
-
-    
-    // const char* mServiceConfigFBNotification;
-    // static const char* const scmAddrFetchFailed;
-    // static const char* const scmCOVSubscriptionFailed;
-    // static const char* const scmOK;
-
-    bool isSlaveAvailable(int index) {}; //TODO;
 
     // controller instance id
     int m_nControllerID;
 
     // controller config
     struct SBacnetClientControllerConfig m_stConfig;
-
-     // list of objects
-    typedef CSinglyLinkedList<CBacnetObject *> TBacnetObjectList;
-    TBacnetObjectList *pmObjectList;
-
-     // list of service handles (TODO change to proper type)
-    typedef CSinglyLinkedList<int *> TBacnetServiceHandleList;
-    TBacnetServiceHandleList *pmServiceList;
-
+    
     // invoke id
     uint8_t invoke_id;
     uint8_t getNextInvokeID();
@@ -173,11 +118,48 @@ class CBacnetServiceHandle;
     typedef std::map<uint8_t, CBacnetServiceHandle *> TInvokeIDHandleMap;
     TInvokeIDHandleMap mInvokeIDsHandles; // TODO - better naiming
 
+    //outgoing Transaction Buffer
+    uint8_t mSendBuffer[MAX_APDU];
+    //receive buffer
+    uint8_t mReceiveBuffer[MAX_APDU];
+
     // states
     enum EBacnetClientControllerState {
-      e_Init, e_AddressFetch, e_COVSubscription, e_Operating 
+      e_Init, 
+      e_AddressFetch, //TODO remove
+      e_AddressDiscovery, 
+      e_COVSubscription, 
+      e_Operating, //TODO remove
+      e_ConfigFBsNotification,
+      e_NormalOperation
     };
     EBacnetClientControllerState m_eClientControllerState;
+    
+    // cov subs list
+    struct SBacnetCOVSubsListEntry {
+      bool mSubscriptionAcknowledged;
+      uint8_t mAssignedInvokeId;
+      CBacnetServiceConfigFB *mServiceConfigFB;
+    };
+    typedef CSinglyLinkedList<SBacnetCOVSubsListEntry *> TBacnetCOVSubList;
+    TBacnetCOVSubList *pmCOVSubscribers;
+    void populateCOVSubscribers();
+
+    void discoverNetworkAddresses();
+    void sendWhoIs(uint32_t paDeviceId);
+    void receiveIAm(uint32_t paDeviceId);
+    void handleIAm(uint32_t paDeviceId, const struct sockaddr_in &src, uint8_t paAPDUOffset);
+    bool timeoutMillis(uint16_t paMillis, timespec paStartTime);
+    void notifyConfigFBs();
+
+    void subscribeToCOVNotifications();
+    void sendUnconfirmedCOVSubscribe(SBacnetCOVSubsListEntry *paCOVSubsEntry);
+    void receiveCOVSubscriptionAck(SBacnetCOVSubsListEntry *paCOVSubsEntry);
+    void handleCOVSubscriptionAck(SBacnetCOVSubsListEntry *paCOVSubsEntry, uint8_t paAPDUOffset);
+
+    void executeOperationCycle();
+    void encodeRequest(CBacnetServiceHandle *paHandle, uint8_t &paInvokeId, uint16_t &paRequestLen, in_addr &paDestAddr, uint16_t &paDestPort);
+    void handleReceivedPacket();
 
     // addr list
     struct SBacnetAddressListEntry {
@@ -188,42 +170,20 @@ class CBacnetServiceHandle;
     };
     typedef CSinglyLinkedList<SBacnetAddressListEntry *> TBacnetAddrList;
     TBacnetAddrList *pmAddrList;
-    int encodeWhoIs(uint32_t device_id, uint8_t *buffer);
-
-    // cov subs list
-    // struct SBacnetCOVSubsListEntry {
-    //   bool mSubscriptionAcknowledged;
-    //   uint8_t mAssignedInvokeId;
-    //   CBacnetServiceHandle *mHandle;
-    //   CBacnetServiceConfigFB::ServiceConfig *mSubscriptionConfig;
-    // };
-    // typedef CSinglyLinkedList<SBacnetCOVSubsListEntry *> TBacnetCOVSubList;
-    // TBacnetCOVSubList *pmCOVSubList;
 
     typedef CSinglyLinkedList<CBacnetServiceConfigFB *> TServiceConfigFBsList;
     TServiceConfigFBsList *pmServiceConfigFBsList;
     void updateSCFBsList(CBacnetServiceConfigFB *paConfigFB);
 
-    void buildSubscribeCOVAndSend(CBacnetServiceConfigFB::ServiceConfig *paConfig, uint8_t *buffer, uint8_t &paAssignedInvokeId);
-    void handleCOVSubscriptionAck(uint8_t *apdu, const uint32_t &apdu_len);
     void handleUnconfirmedCOVNotifation(uint8_t *apdu, const uint32_t &apdu_len);
 
-    int sendPacket(uint8_t *buffer, uint16_t len, struct in_addr dest_addr, uint16_t dest_port);
-    int receivePacket(uint8_t *buffer, size_t buffer_size, uint16_t timeout, sockaddr_in &src);
-    bool getAddressByDeviceId(uint32_t paDeviceId, struct in_addr &paDeviceAddr, uint16_t &paDeviceAddrPort);
+    int sendPacket(uint16_t len, struct in_addr dest_addr, uint16_t dest_port);
+    int receivePacket(uint16_t timeout, sockaddr_in *src);
+    bool getAddressByDeviceId(uint32_t paDeviceId, struct in_addr *paDeviceAddr, uint16_t *paDeviceAddrPort);
     BACNET_ADDRESS ipToBacnetAddress(struct in_addr paDeviceAddr, uint16_t paPort, bool paBroadcastAddr);
 
     void populateAddrTable();
     bool checkAddrTableForDuplicate(uint32_t device_id);
-    // cov subs list
-    struct SBacnetCOVSubsListEntry {
-      bool mSubscriptionAcknowledged;
-      uint8_t mAssignedInvokeId;
-      CBacnetServiceConfigFB *mServiceConfigFB;
-    };
-    typedef CSinglyLinkedList<SBacnetCOVSubsListEntry *> TBacnetCOVSubList;
-    TBacnetCOVSubList *pmCOVSubscribers;
-    void populateCOVSubscribers();
 
     
 };
