@@ -90,8 +90,11 @@ private:
 
 public:
 
+  uint8_t mSubscriptionInvokeId;
+  bool mSubscriptionAcknowledged;
+
   CBacnetSubscribeUnconfirmedCOVConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
-  CBacnetServiceConfigFB(e_UnconfirmedCOVSub, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
+  CBacnetServiceConfigFB(e_UnconfirmedCOVSub, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData), mSubscriptionInvokeId(0), mSubscriptionAcknowledged(false) {
 
   };
 

@@ -22,7 +22,9 @@ public:
   void fireConfirmationEvent() {
    startNewEventChain(static_cast<forte::core::io::ProcessInterface *>(getObserver()));
   };
-  
+  void missedTransactionDeadline() {
+    m_eHandleState = e_Idle;
+  }
 
   void enableHandler(void) {};
   void disableHandler(void) { };

@@ -27,6 +27,7 @@
 
 
 class CBacnetServiceHandle;
+class CBacnetSubscribeUnconfirmedCOVConfigFB;
 
   class CBacnetClientController: public forte::core::io::IODeviceController {
   
@@ -65,8 +66,9 @@ class CBacnetServiceHandle;
     bool pushToRingbuffer(CBacnetServiceHandle *handle);
     CBacnetServiceHandle * consumeFromRingbuffer();
 
-    bool decodeNPDU(uint8_t *pdu, uint32_t &apdu_offset, uint32_t &apdu_len, uint8_t &apdu_type, uint8_t &service_choice);
+    bool decodeNPDU(uint32_t &apdu_offset, uint32_t &apdu_len, uint8_t &apdu_type, uint8_t &service_choice);
     void handleAPDU(uint8_t *apdu, const uint32_t &apdu_len, const uint8_t &apdu_type, const uint8_t &service_choice);
+    void handleServiceAck(uint8_t paInvokeID, uint8_t *apdu, const uint32_t &apdu_len);
 
     sockaddr_in getMyNetworkAddress();
 
@@ -75,11 +77,23 @@ class CBacnetServiceHandle;
     struct in_addr mBroadcastAddr;
     uint16_t mPort;
 
-    bool addInvokeIDHandlePair(const uint8_t &paInvokeID, CBacnetServiceHandle *handle);
+    struct STransactionListEntry {
+      uint8_t mInvokeId;
+      CBacnetServiceHandle * mHandle;
+      timespec mDeadline;
 
-    bool removeInvokeIDHandlePair(const uint8_t &paInvokeID);
+      STransactionListEntry(uint8_t paInvokeID, CBacnetServiceHandle *paHandle, timespec paDeadline) : \
+       mInvokeId(paInvokeID), mHandle(paHandle), mDeadline(paDeadline) { }
+    };
 
-    void initDone(); // better naming?
+    typedef CSinglyLinkedList<STransactionListEntry *> TTransactionList;
+    TTransactionList *mActiveTransactions;
+    //void registerTransaction(uint8_t paInvokeID, CBacnetServiceHandle *paHandle);
+    void registerTransaction(STransactionListEntry *paTransaction);
+    void deregisterTransaction(STransactionListEntry *paTransaction);
+    void checkTransactionDeadlines();
+
+    void daisyChainInitDone();
 
   protected:
     const char* init(); // Initialize the device object (call it's init function)
@@ -114,10 +128,6 @@ class CBacnetServiceHandle;
     TSocketDescriptor mBacnetSocket;
     TSocketDescriptor openBacnetIPSocket();
 
-    // reuests awaiting response
-    typedef std::map<uint8_t, CBacnetServiceHandle *> TInvokeIDHandleMap;
-    TInvokeIDHandleMap mInvokeIDsHandles; // TODO - better naiming
-
     //outgoing Transaction Buffer
     uint8_t mSendBuffer[MAX_APDU];
     //receive buffer
@@ -135,16 +145,6 @@ class CBacnetServiceHandle;
     };
     EBacnetClientControllerState m_eClientControllerState;
     
-    // cov subs list
-    struct SBacnetCOVSubsListEntry {
-      bool mSubscriptionAcknowledged;
-      uint8_t mAssignedInvokeId;
-      CBacnetServiceConfigFB *mServiceConfigFB;
-    };
-    typedef CSinglyLinkedList<SBacnetCOVSubsListEntry *> TBacnetCOVSubList;
-    TBacnetCOVSubList *pmCOVSubscribers;
-    void populateCOVSubscribers();
-
     void discoverNetworkAddresses();
     void sendWhoIs(uint32_t paDeviceId);
     void receiveIAm(uint32_t paDeviceId);
@@ -153,26 +153,36 @@ class CBacnetServiceHandle;
     void notifyConfigFBs();
 
     void subscribeToCOVNotifications();
-    void sendUnconfirmedCOVSubscribe(SBacnetCOVSubsListEntry *paCOVSubsEntry);
-    void receiveCOVSubscriptionAck(SBacnetCOVSubsListEntry *paCOVSubsEntry);
-    void handleCOVSubscriptionAck(SBacnetCOVSubsListEntry *paCOVSubsEntry, uint8_t paAPDUOffset);
+    //void sendUnconfirmedCOVSubscribe(SBacnetCOVSubsListEntry *paCOVSubsEntry);
+    void sendUnconfirmedCOVSubscribe(CBacnetSubscribeUnconfirmedCOVConfigFB *paConfigFB);
+    //void receiveCOVSubscriptionAck(SBacnetCOVSubsListEntry *paCOVSubsEntry);
+    void receiveCOVSubscriptionAck(CBacnetSubscribeUnconfirmedCOVConfigFB *paConfigFB);
+    //void handleCOVSubscriptionAck(SBacnetCOVSubsListEntry *paCOVSubsEntry, uint8_t paAPDUOffset);
+    void handleCOVSubscriptionAck(CBacnetSubscribeUnconfirmedCOVConfigFB *paConfigFB, uint8_t paAPDUOffset);
 
     void executeOperationCycle();
     void encodeRequest(CBacnetServiceHandle *paHandle, uint8_t &paInvokeId, uint16_t &paRequestLen, in_addr &paDestAddr, uint16_t &paDestPort);
     void handleReceivedPacket();
 
     // addr list
-    struct SBacnetAddressListEntry {
-      bool mAddrInitFlag;
+    struct SBacnetAddressTableEntry {
       uint32_t mDeviceId;
       struct in_addr mAddr;
       uint16_t mPort;
+
+      SBacnetAddressTableEntry(uint32_t paDeviceId) : mDeviceId(paDeviceId), mPort(0) {
+        memset(&mAddr, 0, sizeof(struct in_addr));
+      }
     };
-    typedef CSinglyLinkedList<SBacnetAddressListEntry *> TBacnetAddrList;
-    TBacnetAddrList *pmAddrList;
+    typedef CSinglyLinkedList<SBacnetAddressTableEntry *> TBacnetAddrTable;
+    TBacnetAddrTable *pmAddrTable;
 
     typedef CSinglyLinkedList<CBacnetServiceConfigFB *> TServiceConfigFBsList;
     TServiceConfigFBsList *pmServiceConfigFBsList;
+    
+    typedef CSinglyLinkedList<CBacnetSubscribeUnconfirmedCOVConfigFB *> TCOVSubscribersList;
+    TCOVSubscribersList *pmCOVSubscribers;
+
     void updateSCFBsList(CBacnetServiceConfigFB *paConfigFB);
 
     void handleUnconfirmedCOVNotifation(uint8_t *apdu, const uint32_t &apdu_len);

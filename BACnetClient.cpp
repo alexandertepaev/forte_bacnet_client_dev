@@ -51,7 +51,7 @@ void CBacnetClientConfigFB::executeEvent(int pa_nEIID){
 
   if (BACnetAdapterOut().INITO() == pa_nEIID) {
     IOConfigFBController::onStartup();
-    static_cast<CBacnetClientController *>(getDeviceController())->initDone();
+    static_cast<CBacnetClientController *>(getDeviceController())->daisyChainInitDone();
   }
     
 }
@@ -79,7 +79,7 @@ void CBacnetClientConfigFB::onStartup(){
   DEVLOG_DEBUG("[CBacnetClientConfigFB] onStartup()\n");
   //check if we have adapter peers 
   if (BACnetAdapterOut().getPeer() == 0) {
-    static_cast<CBacnetClientController *>(getDeviceController())->initDone();
+    static_cast<CBacnetClientController *>(getDeviceController())->daisyChainInitDone();
     return IOConfigFBController::onStartup();
   }
 
