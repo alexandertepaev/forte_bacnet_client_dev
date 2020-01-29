@@ -6,6 +6,7 @@
 #include "bacnet_service_handle.h"
 
 
+class CBacnetServiceHandle;
 
 class CBacnetUnconfirmedCOVHandle : public CBacnetServiceHandle
 {

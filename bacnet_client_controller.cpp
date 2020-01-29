@@ -1,4 +1,10 @@
 #include "bacnet_client_controller.h"
+#include "bacnet_service_config_fb.h"
+#include "bacnet_service_handle.h"
+#include "bacnet_readproperty_handle.h"
+#include "bacnet_writeproperty_handle.h"
+#include "bacnet_unconfirmed_cov_handle.h"
+#include "BACnetSubscribeUnconfirmedCOV.h"
 
 CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, int id) : forte::core::io::IODeviceController(paDeviceExecution), m_nControllerID(id), m_nSendRingbufferHeadIndex(0), m_nSendRingbufferSize(0), m_nSendRingbufferTailIndex(0), mBacnetSocket(0), m_eClientControllerState(e_Init), pmAddrTable(0), invoke_id(0), pmServiceConfigFBsList(0), mActiveTransactions(0), pmCOVSubscribers(0)
 {
@@ -289,11 +295,7 @@ bool CBacnetClientController::timeoutMillis(uint16_t paMillis, timespec paStartT
   timespecSub(&current_time, &paStartTime, &delta);
   uint16_t millis_elapsed = round(delta.tv_nsec / 1.0e6) + delta.tv_sec * 1000;
 
-  if(millis_elapsed > paMillis){
-    return true;
-  } else {
-    return false;
-  }
+  return (millis_elapsed > paMillis);
 }
 
 void CBacnetClientController::subscribeToCOVNotifications() {
@@ -382,7 +384,7 @@ void CBacnetClientController::receiveCOVSubscriptionAck(CBacnetSubscribeUnconfir
 
 
 void CBacnetClientController::handleCOVSubscriptionAck(CBacnetSubscribeUnconfirmedCOVConfigFB *paConfigFB, uint8_t paAPDUOffset) {
-  /* Multiple subscription to the same (Device, ObjectType, ObjectID) tuple are sent multiple times -- fix it?*/
+  // Multiple subscription to the same (Device, ObjectType, ObjectID) tuple are sent multiple times -- fix it?
   uint8_t invoke_id = mReceiveBuffer[paAPDUOffset+4+1];
   if(paConfigFB->mSubscriptionInvokeId == invoke_id){
     paConfigFB->mSubscriptionAcknowledged = true;

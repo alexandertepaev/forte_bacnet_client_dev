@@ -2,13 +2,9 @@
 #define _BACNET_READPROPERTY_HANDLE_H_
 
 
-#include "BACnetReadProperty.h"
 #include "bacnet_service_handle.h"
 
-
-
-class CBacnetReadPropertyHandle : public CBacnetServiceHandle
-{
+class CBacnetReadPropertyHandle : public CBacnetServiceHandle {
 private:
   /* data */
 public:

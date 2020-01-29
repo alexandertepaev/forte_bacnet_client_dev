@@ -18,15 +18,10 @@
 #include <forte_wstring.h>
 #include "BACnetAdapter.h"
 
-#include"../../forte-incubation_1.11.0/src/core/io/configFB/io_master_multi.h"
-#include"../../forte-incubation_1.11.0/src/core/io/device/io_controller_multi.h"
-#include "bacnet_client_controller.h"
+#include"../../forte-incubation_1.11.0/src/core/io/configFB/io_configFB_controller.h"
+//#include "bacnet_client_controller.h"
 
-
-#include "include/bacnet.h"
-
-//class CBacnetClientConfigFB: public forte::core::io::IOConfigFBMultiMaster{
-  class CBacnetClientConfigFB: public forte::core::io::IOConfigFBController{
+class CBacnetClientConfigFB: public forte::core::io::IOConfigFBController{
   DECLARE_FIRMWARE_FB(CBacnetClientConfigFB)
 
 private:
@@ -96,12 +91,12 @@ private:
 
 public:
  
-  // FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetClientConfigFB, forte::core::io::IOConfigFBMultiMaster){
-  // }
+  /*
   FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetClientConfigFB, forte::core::io::IOConfigFBController){
   }
-
-  virtual ~CBacnetClientConfigFB(){};
+  */
+  CBacnetClientConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes);
+  ~CBacnetClientConfigFB();
 
   forte::core::io::IODeviceController* createDeviceController(CDeviceExecution& paDeviceExecution);
 

@@ -1,4 +1,6 @@
 #include "bacnet_writeproperty_handle.h"
+#include "BACnetWriteProperty.h"
+#include "bacnet_client_controller.h"
 
 CBacnetWritePropertyHandle::CBacnetWritePropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution, paServiceConfigFB)
 {

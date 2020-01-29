@@ -10,6 +10,8 @@
  *************************************************************************/
 
 #include "BACnetClient.h"
+#include "bacnet_client_controller.h"
+
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "BACnetClient_gen.cpp"
 #endif
@@ -45,6 +47,15 @@ const SFBInterfaceSpec CBacnetClientConfigFB::scm_stFBInterfaceSpec = {
 
 
 int CBacnetClientConfigFB::sm_nControllerInstances = 0;
+
+CBacnetClientConfigFB::CBacnetClientConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
+forte::core::io::IOConfigFBController( pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
+
+}
+
+CBacnetClientConfigFB::~CBacnetClientConfigFB(){
+
+}
 
 void CBacnetClientConfigFB::executeEvent(int pa_nEIID){
   IOConfigFBController::executeEvent(pa_nEIID);

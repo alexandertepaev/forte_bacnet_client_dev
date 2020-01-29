@@ -1,10 +1,7 @@
 #ifndef _BACNET_WRITEPROPERTY_HANDLE_H_
 #define _BACNET_WRITEPROPERTY_HANDLE_H_
 
-
-#include "BACnetWriteProperty.h"
 #include "bacnet_service_handle.h"
-
 
 
 class CBacnetWritePropertyHandle : public CBacnetServiceHandle

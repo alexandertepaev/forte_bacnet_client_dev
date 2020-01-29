@@ -17,12 +17,10 @@
 #include <forte_string.h>
 #include <forte_uint.h>
 #include <forte_wstring.h>
+
 #include "BACnetAdapter.h"
 #include "bacnet_service_config_fb.h"
-#include "bacnet_client_controller.h"
 
-
-//class CBacnetWritePropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
 class CBacnetWritePropertyConfigFB: public CBacnetServiceConfigFB{ 
   DECLARE_FIRMWARE_FB(CBacnetWritePropertyConfigFB)
 
@@ -90,30 +88,16 @@ private:
 
    FORTE_FB_DATA_ARRAY(1, 8, 2, 2);
 
-  void executeEvent(int pa_nEIID);
+  bool setConfig();
 
-  const char* init();
+  bool initHandle(CBacnetClientController *paController);
 
   int m_nIndex;
 
-  static const char* const scmError;
-  static const char* const scmOK;
-  static const char* const scmAddrFetchFailed;
-  static const char* const scmHandleInitFailed;
-
-
 public:
-  // FUNCTION_BLOCK_CTOR_WITH_BASE_CLASS(CBacnetWritePropertyConfigFB, forte::core::io::IOConfigFBBase), CBacnetServiceConfigFB(e_WriteProperty) {
-  
-  // };
-  CBacnetWritePropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
-  CBacnetServiceConfigFB(e_WriteProperty, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
 
-  };
-
-
-  virtual ~CBacnetWritePropertyConfigFB(){};
-
+  CBacnetWritePropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes);
+  ~CBacnetWritePropertyConfigFB();
 
   struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
 
@@ -122,12 +106,8 @@ public:
     uint32_t mArrayIndex;
     
     ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
-    CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {
-      if(paPriority < 1 || paPriority > 16) {
-        mPriority = 16;
-      } else {
-        mPriority = paPriority;
-      }
+    CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex), mPriority(paPriority) {
+      
     };
   };
 

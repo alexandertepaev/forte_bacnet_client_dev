@@ -1,4 +1,6 @@
 #include "bacnet_readproperty_handle.h"
+#include "BACnetReadProperty.h"
+#include "bacnet_client_controller.h"
 
 CBacnetReadPropertyHandle::CBacnetReadPropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution, paServiceConfigFB)
 {

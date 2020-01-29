@@ -3,11 +3,14 @@
 
 
 #include <devexec.h>
-#include "bacnet_service_config_fb.h"
 #include <extevhan.h>
 #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_handle.h"
 #include "include/bacnet.h"
 #include <processinterface.h>
+
+
+class CBacnetServiceConfigFB;
+class CBacnetClientController;
 
 class CBacnetServiceHandle : public forte::core::io::IOHandle, protected CExternalEventHandler
 {

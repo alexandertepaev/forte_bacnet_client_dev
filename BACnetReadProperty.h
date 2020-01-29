@@ -16,20 +16,11 @@
 #include <forte_bool.h>
 #include <forte_uint.h>
 #include <forte_wstring.h>
+
 #include "BACnetAdapter.h"
 #include "bacnet_service_config_fb.h"
-#include "bacnet_client_controller.h"
-#include "BACnetClient.h"
 
-
-#include "../../forte-incubation_1.11.0/src/core/io/configFB/io_master_multi.h"
-#include "../../forte-incubation_1.11.0/src/core/io/device/io_controller_multi.h"
-#include"../../forte-incubation_1.11.0/src/core/io/configFB/io_master_multi.h"
-#include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
-#include "../../forte-incubation_1.11.0/src/core/io/mapper/io_handle.h"
-
-//class CBacnetReadPropertyConfigFB: public forte::core::io::IOConfigFBBase, public CBacnetServiceConfigFB{
-  class CBacnetReadPropertyConfigFB: public CBacnetServiceConfigFB {
+class CBacnetReadPropertyConfigFB: public CBacnetServiceConfigFB {
   DECLARE_FIRMWARE_FB(CBacnetReadPropertyConfigFB)
 
 private:
@@ -92,30 +83,22 @@ private:
 
    FORTE_FB_DATA_ARRAY(1, 7, 2, 2);
 
-  void executeEvent(int pa_nEIID);
+  bool setConfig();
 
-  const char* init();
+  bool initHandle(CBacnetClientController *paController);
 
   int m_nIndex;
 
-  static const char* const scmError;
-  static const char* const scmOK;
-  static const char* const scmHandleInitFailed;
-  static const char* const scmAddrFetchFailed;
-
 public:
 
-  CBacnetReadPropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
-  CBacnetServiceConfigFB(e_ReadProperty, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
+  CBacnetReadPropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes);
 
-  };
-
-  virtual ~CBacnetReadPropertyConfigFB(){};
+  ~CBacnetReadPropertyConfigFB();
 
   struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
 
     uint32_t mObjectProperty;
-    uint32_t mArrayIndex;
+    uint32_t mArrayIndex; // hardcoded for now, since it is an optional parameter
     
     ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex) :
     CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {

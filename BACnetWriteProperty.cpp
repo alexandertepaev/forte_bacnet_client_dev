@@ -10,17 +10,12 @@
  *************************************************************************/
 
 #include "BACnetWriteProperty.h"
+#include "bacnet_client_controller.h"
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "BACnetWriteProperty_gen.cpp"
 #endif
 
 DEFINE_FIRMWARE_FB(CBacnetWritePropertyConfigFB, g_nStringIdBACnetWriteProperty)
-
-const char* const CBacnetWritePropertyConfigFB::scmError = "Failed";
-const char* const CBacnetWritePropertyConfigFB::scmAddrFetchFailed = "Address fetch failed";
-const char* const CBacnetWritePropertyConfigFB::scmOK = "Initialized";
-const char* const CBacnetWritePropertyConfigFB::scmHandleInitFailed = "Handle initialization failed";
-
 
 const CStringDictionary::TStringId CBacnetWritePropertyConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdObserverName, g_nStringIdDeviceID, g_nStringIdObjectType, g_nStringIdObjectID, g_nStringIdObjectProperty, g_nStringIdPriority, g_nStringIdArrayIndex};
 
@@ -45,74 +40,38 @@ const SFBInterfaceSpec CBacnetWritePropertyConfigFB::scm_stFBInterfaceSpec = {
   2,scm_astAdapterInstances};
 
 
-void CBacnetWritePropertyConfigFB::executeEvent(int pa_nEIID){
-  if(BACnetAdapterIn().INIT() == pa_nEIID) {
-    DEVLOG_DEBUG("[BACnetWritePropertyConfigFB] init event\n");
-    // todo error message if init() return -1
-    const char* const error = init();
-    if(error){
-      QO() = false;
-      STATUS() = error;
-    }
-    
+CBacnetWritePropertyConfigFB::CBacnetWritePropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
+CBacnetServiceConfigFB(e_WriteProperty, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
+};
 
-    if(BACnetAdapterOut().getPeer() == 0) {
-      // backpropagate inito
-      BACnetAdapterIn().QO() = QO();
-      sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
-    } else {
-      // forward init
-      BACnetAdapterOut().MasterId() = BACnetAdapterIn().MasterId();
-      BACnetAdapterOut().Index() = (TForteUInt16) (BACnetAdapterIn().Index() + 1);
-      BACnetAdapterOut().QI() = BACnetAdapterIn().QI();
-      sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, BACnetAdapter::scm_nEventINITID);
-    }
-
-  } else if(BACnetAdapterOut().INITO() == pa_nEIID) {
-     // backpropagate inito
-      BACnetAdapterIn().QO() = BACnetAdapterOut().QO() && QO();
-      sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
-  } else if(cg_nExternalEventID == pa_nEIID){
-    switch(mNotificationType){
-      case e_Success:
-        QO() = true;
-        STATUS() = scmOK;
-        break;
-      case e_AddrFetchFailed:
-        QO() = false;
-        STATUS() = scmAddrFetchFailed;
-        break;
-      case e_COVSubscriptionFailed:
-        break;
-      default:
-        break;
-    }
-  }
+CBacnetWritePropertyConfigFB::~CBacnetWritePropertyConfigFB(){
 }
 
+bool CBacnetWritePropertyConfigFB::setConfig() {
+  BACNET_OBJECT_TYPE objType = getObjectType(ObjectType());
+  BACNET_PROPERTY_ID objProp = getObjectProperty(ObjectProperty());
 
-const char* CBacnetWritePropertyConfigFB::init(){
+  if(objType == BACNET_OBJECT_TYPE::MAX_BACNET_OBJECT_TYPE || 
+      objProp == BACNET_PROPERTY_ID::MAX_BACNET_PROPERTY_ID || 
+      DeviceID() > BACNET_MAX_INSTANCE || 
+      ObjectID() > BACNET_MAX_INSTANCE ||
+      Priority() < BACNET_NO_PRIORITY ||
+      Priority() > BACNET_MAX_PRIORITY)
+      return false;
 
-  setEventChainExecutor(m_poInvokingExecEnv);
-
-  m_nIndex = BACnetAdapterIn().Index();
-
-  CBacnetClientConfigFB *master = CBacnetClientConfigFB::getClientConfigFB(); // TODO check if master is not NULL
-  CBacnetClientController *clictr = static_cast<CBacnetClientController *>(master->getDeviceController());
-
-  m_stServiceConfig = new ServiceConfig(DeviceID(), getObjectType(ObjectType()), ObjectID(), getObjectProperty(ObjectProperty()), BACNET_ARRAY_ALL, Priority());
-
-  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, SERVICE_CONFIRMED_WRITE_PROPERTY, this);
-     
-  clictr->addHandle(desc);
-
-  if(mServiceHandle == 0) {
-    return scmHandleInitFailed;
-  }
-  clictr->updateSCFBsList(this);
-
-  return 0;
+  m_stServiceConfig = new ServiceConfig(DeviceID(), objType, ObjectID(), objProp, BACNET_ARRAY_ALL, Priority()); // TODO BACNET_ARRAY_ALL?
+  return true;
 }
 
+bool CBacnetWritePropertyConfigFB::initHandle(CBacnetClientController *paController) {
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_WRITE_PROPERTY, this);
+
+  paController->addHandle(desc);
+
+  if(mServiceHandle == 0)
+    return false;
+
+  return true;
+}
 
 
