@@ -54,6 +54,8 @@ protected:
   BACNET_OBJECT_TYPE getObjectType(CIEC_WSTRING paObjectType);
   BACNET_PROPERTY_ID getObjectProperty(CIEC_WSTRING paObjectProperty);
 
+  CIEC_ANY::EDataTypeID getIECDataType(BACNET_OBJECT_TYPE);
+
 
 public:
 
@@ -71,10 +73,10 @@ public:
   // rework
   struct ServiceConfig {
     uint32_t mDeviceId;
-    uint32_t mObjectType;
+    BACNET_OBJECT_TYPE mObjectType;
     uint32_t mObjectId;
   
-    ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId) :
+    ServiceConfig(uint32_t paDeviceId, BACNET_OBJECT_TYPE paObjectType, uint32_t paObjectId) :
     mDeviceId(paDeviceId), mObjectType(paObjectType), mObjectId(paObjectId) {
 
     }

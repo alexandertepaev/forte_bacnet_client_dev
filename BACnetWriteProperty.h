@@ -105,7 +105,7 @@ public:
     uint32_t mPriority;
     uint32_t mArrayIndex;
     
-    ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
+    ServiceConfig(uint32_t paDeviceId, BACNET_OBJECT_TYPE paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
     CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex), mPriority(paPriority) {
       
     };

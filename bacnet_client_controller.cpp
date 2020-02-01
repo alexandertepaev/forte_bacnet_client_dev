@@ -11,9 +11,9 @@ CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecu
   memset(m_aSendRingbuffer, 0, cm_nSendRingbufferSize * sizeof(TBacnetServiceHandlePtr));
   
   m_stConfig.nPortNumber = 0;
-  m_stConfig.nDeviceObjID = 0; //TODO: not used
-  m_stConfig.sDeviceObjName = NULL; //TODO: not used
-  m_stConfig.sPathToAddrFile = NULL; //TODO: not used
+  // m_stConfig.nDeviceObjID = 0; //TODO: not used
+  // m_stConfig.sDeviceObjName = NULL; //TODO: not used
+  // m_stConfig.sPathToAddrFile = NULL; //TODO: not used
 
 }
 
@@ -53,6 +53,7 @@ const char* CBacnetClientController::init() {
 
 //TODO: set default to eth0
 #define NETWORK_IFACE_NAME "enp0s25"
+//#define NETWORK_IFACE_NAME "eth0" //FIXME
 //#define NETWORK_IFACE_NAME "wlp4s0"
 
 
@@ -146,8 +147,7 @@ int CBacnetClientController::receivePacket(uint16_t timeout, sockaddr_in *src) {
   FD_SET(mBacnetSocket, &read_fds);
 
   if(select(mBacnetSocket+1, &read_fds, NULL, NULL, &select_timeout) > 0){
-    //sockaddr_in src;
-    socklen_t srcLen = sizeof(src);
+    socklen_t srcLen = sizeof(sockaddr_in);
     int rcv_retval = recvfrom(mBacnetSocket, mReceiveBuffer, sizeof(mReceiveBuffer), 0, (sockaddr *)src, &srcLen);
     if(rcv_retval > 0) {
       DEVLOG_DEBUG("[CBacnetClientController] Received a BACnet packet of length %d\n", rcv_retval);
@@ -405,7 +405,7 @@ void CBacnetClientController::notifyConfigFBs() {
         startNewEventChain((*it));
         pmServiceConfigFBsList->erase((*it));
       } else {
-        if((*it)->mServiceType == CBacnetServiceConfigFB::EServiceType::e_UnconfirmedCOVSub){
+        if((*it)->mServiceType == CBacnetServiceConfigFB::e_UnconfirmedCOVSub){
           CBacnetSubscribeUnconfirmedCOVConfigFB *covSubFB = static_cast<CBacnetSubscribeUnconfirmedCOVConfigFB *>((*it));
           if(!(covSubFB->mSubscriptionAcknowledged)){
             covSubFB->setNotificationType(CBacnetServiceConfigFB::e_COVSubscriptionFailed);
@@ -665,36 +665,39 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
 
   HandleDescriptor *desc = static_cast<CBacnetClientController::HandleDescriptor *>(handleDescriptor);
   
-  CIEC_ANY::EDataTypeID data_type = CIEC_ANY::e_ANY;
+  // CIEC_ANY::EDataTypeID data_type = CIEC_ANY::e_ANY;
 
-  if( desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_OUTPUT || 
-        desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_INPUT ||
-        desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_ANALOG_VALUE) { // TODO - check in scfb (rp,wp) if it tgt object prop is present value/cov increment
+  // if( desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_OUTPUT || 
+  //       desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_INPUT ||
+  //       desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_ANALOG_VALUE) { // TODO - check in scfb (rp,wp) if it tgt object prop is present value/cov increment
 
-        data_type = CIEC_ANY::e_DWORD;
+  //       data_type = CIEC_ANY::e_DWORD;
 
-  } else if ( desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_BINARY_OUTPUT || 
-              desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_INPUT ||
-              desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_VALUE) { // TODO - check in scfb (rp,wp) if it tgt object prop is present value/cov increment
+  // } else if ( desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_BINARY_OUTPUT || 
+  //             desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_INPUT ||
+  //             desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_VALUE) { // TODO - check in scfb (rp,wp) if it tgt object prop is present value/cov increment
 
-        data_type = CIEC_ANY::e_BOOL;
+  //       data_type = CIEC_ANY::e_BOOL;
 
-  } else {
-    return 0;
-  }
+  // } else {
+  //   return 0;
+  // }
 
   switch (desc->mServiceType)
   {
     case SERVICE_CONFIRMED_READ_PROPERTY:
       // TODO type based on the accessed object params?
-      return new CBacnetReadPropertyHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB); //TODO: is it better to compose a pdu one single time here and store it's value in rom or is it better to compose it every single time we want to send a request
+      // return new CBacnetReadPropertyHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB); //TODO: is it better to compose a pdu one single time here and store it's value in rom or is it better to compose it every single time we want to send a request
+      return new CBacnetReadPropertyHandle(this, desc->mDirection, desc->mIECDataType, mDeviceExecution, desc->mServiceConfigFB);
       break;
     case SERVICE_CONFIRMED_WRITE_PROPERTY:
       // TODO - type based on the accessed object params? 
-      return new CBacnetWritePropertyHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
+      // return new CBacnetWritePropertyHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
+      return new CBacnetWritePropertyHandle(this, desc->mDirection, desc->mIECDataType, mDeviceExecution, desc->mServiceConfigFB);
       break;
     case SERVICE_CONFIRMED_SUBSCRIBE_COV:
-      return new CBacnetUnconfirmedCOVHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
+      // return new CBacnetUnconfirmedCOVHandle(this, desc->mDirection, data_type, mDeviceExecution, desc->mServiceConfigFB);
+      return new CBacnetUnconfirmedCOVHandle(this, desc->mDirection, desc->mIECDataType, mDeviceExecution, desc->mServiceConfigFB);
       break;
     default:
       DEVLOG_DEBUG("[CBacnetClientController] initHandle(): Unknown/Unsupported BACnet Service\n");

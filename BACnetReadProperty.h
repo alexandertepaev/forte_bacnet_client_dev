@@ -100,7 +100,7 @@ public:
     uint32_t mObjectProperty;
     uint32_t mArrayIndex; // hardcoded for now, since it is an optional parameter
     
-    ServiceConfig(uint32_t paDeviceId, uint32_t paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex) :
+    ServiceConfig(uint32_t paDeviceId, BACNET_OBJECT_TYPE paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex) :
     CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {
       
     };

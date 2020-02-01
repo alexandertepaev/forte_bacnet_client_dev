@@ -47,7 +47,7 @@ const SFBInterfaceSpec CBacnetSubscribeUnconfirmedCOVConfigFB::scm_stFBInterface
 bool CBacnetSubscribeUnconfirmedCOVConfigFB::setConfig() {
   BACNET_OBJECT_TYPE objType = getObjectType(ObjectType());
 
-  if(objType == BACNET_OBJECT_TYPE::MAX_BACNET_OBJECT_TYPE || 
+  if(objType == MAX_BACNET_OBJECT_TYPE || 
       DeviceID() > BACNET_MAX_INSTANCE || 
       ObjectID() > BACNET_MAX_INSTANCE)
       return false;
@@ -57,7 +57,8 @@ bool CBacnetSubscribeUnconfirmedCOVConfigFB::setConfig() {
 }
 
 bool CBacnetSubscribeUnconfirmedCOVConfigFB::initHandle(CBacnetClientController *paController) {
-  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_SUBSCRIBE_COV, this);
+   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, SERVICE_CONFIRMED_SUBSCRIBE_COV, getIECDataType(m_stServiceConfig->mObjectType), this);
+  // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_SUBSCRIBE_COV, this);
 
   paController->addHandle(desc);
 

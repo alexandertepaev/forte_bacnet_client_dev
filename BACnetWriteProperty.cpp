@@ -51,8 +51,8 @@ bool CBacnetWritePropertyConfigFB::setConfig() {
   BACNET_OBJECT_TYPE objType = getObjectType(ObjectType());
   BACNET_PROPERTY_ID objProp = getObjectProperty(ObjectProperty());
 
-  if(objType == BACNET_OBJECT_TYPE::MAX_BACNET_OBJECT_TYPE || 
-      objProp == BACNET_PROPERTY_ID::MAX_BACNET_PROPERTY_ID || 
+  if(objType == MAX_BACNET_OBJECT_TYPE || 
+      objProp == MAX_BACNET_PROPERTY_ID || 
       DeviceID() > BACNET_MAX_INSTANCE || 
       ObjectID() > BACNET_MAX_INSTANCE ||
       Priority() < BACNET_NO_PRIORITY ||
@@ -64,7 +64,9 @@ bool CBacnetWritePropertyConfigFB::setConfig() {
 }
 
 bool CBacnetWritePropertyConfigFB::initHandle(CBacnetClientController *paController) {
-  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_WRITE_PROPERTY, this);
+  // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_WRITE_PROPERTY,  getIECDataType(getObjectType(ObjectType())), this);
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, SERVICE_CONFIRMED_WRITE_PROPERTY,  getIECDataType(m_stServiceConfig->mObjectType), this);
+  // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_WRITE_PROPERTY, this);
 
   paController->addHandle(desc);
 

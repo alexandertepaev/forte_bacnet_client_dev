@@ -15,6 +15,7 @@ CBacnetUnconfirmedCOVHandle::~CBacnetUnconfirmedCOVHandle()
 
 void CBacnetUnconfirmedCOVHandle::get(CIEC_ANY &paValue) {
   if (m_eHandleState == e_AwaitingResponse) {
+    DEVLOG_DEBUG("[CBacnetUnconfirmedCOVHandle] get()\n");
     if(mType == CIEC_ANY::e_DWORD) {
       static_cast<CIEC_DWORD&>(paValue) = *static_cast<CIEC_DWORD *>(mValue);
     } else if (mType == CIEC_ANY::e_BOOL) {

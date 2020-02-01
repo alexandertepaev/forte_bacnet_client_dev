@@ -20,29 +20,29 @@ CBacnetServiceConfigFB::~CBacnetServiceConfigFB()
 
 BACNET_OBJECT_TYPE CBacnetServiceConfigFB::getObjectType(CIEC_WSTRING paObjectType) {
   if(paObjectType == "ANALOG_OUTPUT") {
-    return BACNET_OBJECT_TYPE::OBJECT_ANALOG_OUTPUT;
+    return OBJECT_ANALOG_OUTPUT;
   } else if (paObjectType == "ANALOG_INPUT") {
-    return BACNET_OBJECT_TYPE::OBJECT_ANALOG_INPUT;
+    return OBJECT_ANALOG_INPUT;
   } else if (paObjectType == "ANALOG_VALUE") {
-    return BACNET_OBJECT_TYPE::OBJECT_ANALOG_VALUE;
+    return OBJECT_ANALOG_VALUE;
   } else if (paObjectType == "BINARY_OUTPUT") {
-    return BACNET_OBJECT_TYPE::OBJECT_BINARY_OUTPUT;
+    return OBJECT_BINARY_OUTPUT;
   } else if (paObjectType == "BINARY_INPUT") {
-    return BACNET_OBJECT_TYPE::OBJECT_BINARY_INPUT;
+    return OBJECT_BINARY_INPUT;
   } else if (paObjectType == "BINARY_VALUE") {
-    return BACNET_OBJECT_TYPE::OBJECT_BINARY_VALUE;
+    return OBJECT_BINARY_VALUE;
   } else {
-    return BACNET_OBJECT_TYPE::MAX_BACNET_OBJECT_TYPE;
+    return MAX_BACNET_OBJECT_TYPE;
   }
 }
 
 BACNET_PROPERTY_ID CBacnetServiceConfigFB::getObjectProperty(CIEC_WSTRING paObjectProperty) {
   if(paObjectProperty == "PRESENT_VALUE"){
-    return BACNET_PROPERTY_ID::PROP_PRESENT_VALUE;
+    return PROP_PRESENT_VALUE;
   } else if (paObjectProperty == "COV_INCREMENT") {
-    return BACNET_PROPERTY_ID::PROP_COV_INCREMENT;
+    return PROP_COV_INCREMENT;
   } else {
-    return BACNET_PROPERTY_ID::MAX_BACNET_PROPERTY_ID;
+    return MAX_BACNET_PROPERTY_ID;
   }
 }
 
@@ -118,4 +118,19 @@ const char *CBacnetServiceConfigFB::init() {
   setEventChainExecutor(m_poInvokingExecEnv);
   
   return 0;
+}
+
+CIEC_ANY::EDataTypeID CBacnetServiceConfigFB::getIECDataType(BACNET_OBJECT_TYPE paObjectType) {
+
+  if(paObjectType == OBJECT_ANALOG_OUTPUT || 
+     paObjectType == OBJECT_ANALOG_INPUT ||
+     paObjectType ==  OBJECT_ANALOG_VALUE) {
+        return CIEC_ANY::e_DWORD;
+  } else if (paObjectType == OBJECT_BINARY_OUTPUT || 
+             paObjectType ==  OBJECT_BINARY_INPUT ||
+             paObjectType ==  OBJECT_BINARY_VALUE) { 
+        return CIEC_ANY::e_BOOL;
+  } 
+
+  return CIEC_ANY::e_Max;
 }

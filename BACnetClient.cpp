@@ -20,16 +20,20 @@ DEFINE_FIRMWARE_FB(CBacnetClientConfigFB, g_nStringIdBACnetClient)
 
 CBacnetClientConfigFB *CBacnetClientConfigFB::mBacnetClientConfigFB = NULL;
 
-const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdPort, g_nStringIdDeviceObjectID, g_nStringIdDeviceObjectName, g_nStringIdPathToAddrFile};
+// const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdPort, g_nStringIdDeviceObjectID, g_nStringIdDeviceObjectName, g_nStringIdPathToAddrFile};
 
-const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputTypeIds[] = {g_nStringIdBOOL, g_nStringIdUINT, g_nStringIdUINT, g_nStringIdWSTRING, g_nStringIdWSTRING};
+const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdPort};
+
+// const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputTypeIds[] = {g_nStringIdBOOL, g_nStringIdUINT, g_nStringIdUINT, g_nStringIdWSTRING, g_nStringIdWSTRING};
+const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputTypeIds[] = {g_nStringIdBOOL, g_nStringIdUINT};
 
 const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataOutputNames[] = {g_nStringIdQO, g_nStringIdSTATUS};
 
 const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataOutputTypeIds[] = {g_nStringIdBOOL, g_nStringIdWSTRING};
 
 const TForteInt16 CBacnetClientConfigFB::scm_anEIWithIndexes[] = {0};
-const TDataIOID CBacnetClientConfigFB::scm_anEIWith[] = {0, 1, 2, 3, 4, 255};
+//const TDataIOID CBacnetClientConfigFB::scm_anEIWith[] = {0, 1, 2, 3, 4, 255};
+const TDataIOID CBacnetClientConfigFB::scm_anEIWith[] = {0, 1, 255};
 const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anEventInputNames[] = {g_nStringIdINIT};
 
 const TDataIOID CBacnetClientConfigFB::scm_anEOWith[] = {0, 1, 255};
@@ -39,9 +43,14 @@ const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anEventOutputNames
 const SAdapterInstanceDef CBacnetClientConfigFB::scm_astAdapterInstances[] = {
 {g_nStringIdBACnetAdapter, g_nStringIdBACnetAdapterOut, true }};
 
+// const SFBInterfaceSpec CBacnetClientConfigFB::scm_stFBInterfaceSpec = {
+//   1,  scm_anEventInputNames,  scm_anEIWith,  scm_anEIWithIndexes,
+//   1,  scm_anEventOutputNames,  scm_anEOWith, scm_anEOWithIndexes,  5,  scm_anDataInputNames, scm_anDataInputTypeIds,
+//   2,  scm_anDataOutputNames, scm_anDataOutputTypeIds,
+//   1,scm_astAdapterInstances};
 const SFBInterfaceSpec CBacnetClientConfigFB::scm_stFBInterfaceSpec = {
   1,  scm_anEventInputNames,  scm_anEIWith,  scm_anEIWithIndexes,
-  1,  scm_anEventOutputNames,  scm_anEOWith, scm_anEOWithIndexes,  5,  scm_anDataInputNames, scm_anDataInputTypeIds,
+  1,  scm_anEventOutputNames,  scm_anEOWith, scm_anEOWithIndexes,  2,  scm_anDataInputNames, scm_anDataInputTypeIds,
   2,  scm_anDataOutputNames, scm_anDataOutputTypeIds,
   1,scm_astAdapterInstances};
 
@@ -79,9 +88,6 @@ void CBacnetClientConfigFB::setConfig(){
   DEVLOG_DEBUG("[CBacnetClientConfigFB] setConfig(): Setting client controller's configuration parameters\n");
   CBacnetClientController::SBacnetClientControllerConfig config;
   config.nPortNumber = Port();
-  config.nDeviceObjID = DeviceObjectID();
-  config.sDeviceObjName = DeviceObjectName().getValue();
-  config.sPathToAddrFile = PathToAddrFile().getValue(); // TODO - maybe not needed? We want to use Who-is/I-Am
   getDeviceController()->setConfig(&config);
 }
 

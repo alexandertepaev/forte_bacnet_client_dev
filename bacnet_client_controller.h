@@ -6,7 +6,6 @@
 #include "../../forte-incubation_1.11.0/src/core/io/device/io_controller.h"
 #include "../../forte-incubation_1.11.0/src/arch/utils/timespec_utils.h"
 
-#define _BSD_SOURCE
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -39,19 +38,29 @@ public:
   // controller configuration
   struct SBacnetClientControllerConfig : forte::core::io::IODeviceController::Config {
     uint16_t nPortNumber;
-    uint32_t nDeviceObjID;
-    char *sDeviceObjName;
-    char *sPathToAddrFile;
+    // uint32_t nDeviceObjID;
+    // char *sDeviceObjName;
+    // char *sPathToAddrFile;
   };
 
   class HandleDescriptor : public forte::core::io::IODeviceController::HandleDescriptor {
     public:
       CBacnetServiceConfigFB *mServiceConfigFB;
       int mServiceType;
+      CIEC_ANY::EDataTypeID mIECDataType;
 
-      HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paServiceType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceController::HandleDescriptor(paId, paDirection), mServiceType(paServiceType), mServiceConfigFB(paServiceConfigFB) {
+      HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paServiceType, CIEC_ANY::EDataTypeID paIECDataType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceController::HandleDescriptor(paId, paDirection), mServiceType(paServiceType), mIECDataType(paIECDataType), mServiceConfigFB(paServiceConfigFB) {
       }
   };
+
+  // class HandleDescriptor : public forte::core::io::IODeviceController::HandleDescriptor {
+  //   public:
+  //     CBacnetServiceConfigFB *mServiceConfigFB;
+  //     int mServiceType;
+    
+  //     HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paServiceType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceController::HandleDescriptor(paId, paDirection), mServiceType(paServiceType), mServiceConfigFB(paServiceConfigFB) {
+  //     }
+  // };
 
   const int& getSocket() {
     return mBacnetSocket;
@@ -67,9 +76,9 @@ public:
   sockaddr_in getMyNetworkAddress();
 
   bool initNetworkAddresses();
-  struct in_addr mLocalAddr;
-  struct in_addr mBroadcastAddr;
-  uint16_t mPort;
+  struct in_addr mLocalAddr; //TODO MOVE TO config struct
+  struct in_addr mBroadcastAddr;//TODO MOVE TO CONFIG STRUCT
+  uint16_t mPort;//TODO MOVE TO CONFIG STRUCT
 
   struct STransactionListEntry {
     uint8_t mInvokeId;

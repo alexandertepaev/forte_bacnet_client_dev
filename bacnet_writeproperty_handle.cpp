@@ -53,16 +53,16 @@ int CBacnetWritePropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &in
   application_data.context_specific = false;
   application_data.next = NULL;
 
-  if(data.object_type == BACNET_OBJECT_TYPE::OBJECT_ANALOG_OUTPUT || 
-     data.object_type == BACNET_OBJECT_TYPE::OBJECT_ANALOG_INPUT ||
-     data.object_type == BACNET_OBJECT_TYPE::OBJECT_ANALOG_VALUE) {
+  if(data.object_type == OBJECT_ANALOG_OUTPUT || 
+     data.object_type == OBJECT_ANALOG_INPUT ||
+     data.object_type == OBJECT_ANALOG_VALUE) {
 
     application_data.tag =  BACNET_APPLICATION_TAG_REAL;
     application_data.type.Real = *((TForteFloat *) mValue->getDataPtr());
   
-  } else if(data.object_type == BACNET_OBJECT_TYPE::OBJECT_BINARY_OUTPUT ||
-            data.object_type == BACNET_OBJECT_TYPE::OBJECT_BINARY_INPUT ||
-            data.object_type == BACNET_OBJECT_TYPE::OBJECT_BINARY_VALUE) {
+  } else if(data.object_type == OBJECT_BINARY_OUTPUT ||
+            data.object_type == OBJECT_BINARY_INPUT ||
+            data.object_type == OBJECT_BINARY_VALUE) {
 
     application_data.tag =  BACNET_APPLICATION_TAG_ENUMERATED;
     application_data.type.Enumerated = *((bool *) mValue->getDataPtr());

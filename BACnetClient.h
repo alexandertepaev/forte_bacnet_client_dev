@@ -39,17 +39,17 @@ private:
     return *static_cast<CIEC_UINT*>(getDI(1));
   };
 
-  CIEC_UINT &DeviceObjectID() {
-    return *static_cast<CIEC_UINT*>(getDI(2));
-  };
+  // CIEC_UINT &DeviceObjectID() {
+  //   return *static_cast<CIEC_UINT*>(getDI(2));
+  // };
 
-  CIEC_WSTRING &DeviceObjectName() {
-    return *static_cast<CIEC_WSTRING*>(getDI(3));
-  };
+  // CIEC_WSTRING &DeviceObjectName() {
+  //   return *static_cast<CIEC_WSTRING*>(getDI(3));
+  // };
 
-  CIEC_WSTRING &PathToAddrFile() {
-    return *static_cast<CIEC_WSTRING*>(getDI(4));
-  };
+  // CIEC_WSTRING &PathToAddrFile() {
+  //   return *static_cast<CIEC_WSTRING*>(getDI(4));
+  // };
 
   static const CStringDictionary::TStringId scm_anDataOutputNames[];
   static const CStringDictionary::TStringId scm_anDataOutputTypeIds[];
@@ -79,7 +79,8 @@ private:
   static const int scm_nBACnetAdapterOutAdpNum = 0;
   static const SFBInterfaceSpec scm_stFBInterfaceSpec;
 
-   FORTE_FB_DATA_ARRAY(1, 5, 2, 1);
+  // FORTE_FB_DATA_ARRAY(1, 5, 2, 1);
+  FORTE_FB_DATA_ARRAY(1, 2, 2, 1);
 
   void executeEvent(int pa_nEIID);
 
