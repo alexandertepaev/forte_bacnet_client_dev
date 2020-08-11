@@ -17,7 +17,8 @@ void CBacnetUnconfirmedCOVHandle::get(CIEC_ANY &paValue) {
   if (m_eHandleState == e_AwaitingResponse) {
     DEVLOG_DEBUG("[CBacnetUnconfirmedCOVHandle] get()\n");
     if(mType == CIEC_ANY::e_DWORD) {
-      static_cast<CIEC_DWORD&>(paValue) = *static_cast<CIEC_DWORD *>(mValue);
+      // static_cast<CIEC_DWORD&>(paValue) = *static_cast<CIEC_DWORD *>(mValue);
+      static_cast<CIEC_REAL&>(paValue) = *static_cast<CIEC_REAL *>(mValue);
     } else if (mType == CIEC_ANY::e_BOOL) {
       static_cast<CIEC_BOOL&>(paValue) = *static_cast<CIEC_BOOL *>(mValue);
     }
@@ -32,7 +33,8 @@ void CBacnetUnconfirmedCOVHandle::get(CIEC_ANY &paValue) {
 void CBacnetUnconfirmedCOVHandle::notificationReceived(BACNET_PROPERTY_VALUE paPropertyValue) {
   DEVLOG_DEBUG("Hello from handler! Notification received\n");
   if(paPropertyValue.value.tag == BACNET_APPLICATION_TAG_REAL) {
-    mValue->setValue(static_cast<CIEC_DWORD>(paPropertyValue.value.type.Real));
+    // mValue->setValue(static_cast<CIEC_DWORD>(paPropertyValue.value.type.Real));
+    mValue->setValue(static_cast<CIEC_REAL>(paPropertyValue.value.type.Real));
   } else if(paPropertyValue.value.tag == BACNET_APPLICATION_TAG_ENUMERATED){
     mValue->setValue(static_cast<CIEC_BOOL>(paPropertyValue.value.type.Enumerated));
   }

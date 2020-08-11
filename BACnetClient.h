@@ -18,7 +18,8 @@
 #include <forte_wstring.h>
 #include "BACnetAdapter.h"
 
-#include"../../forte-incubation_1.11.0/src/core/io/configFB/io_configFB_controller.h"
+//#include"../../forte-incubation_1.11.0/src/core/io/configFB/io_configFB_controller.h"
+#include <core/io/configFB/io_configFB_controller.h>
 //#include "bacnet_client_controller.h"
 
 class CBacnetClientConfigFB: public forte::core::io::IOConfigFBController{
@@ -28,7 +29,7 @@ private:
   static const CStringDictionary::TStringId scm_anDataInputNames[];
   static const CStringDictionary::TStringId scm_anDataInputTypeIds[];
 
-  static CBacnetClientConfigFB *mBacnetClientConfigFB;
+  static CBacnetClientConfigFB *mBacnetClientConfigFB; // TODO - this only allows one Client Config FB per application; Solution - create a list of client config fb's instances (see getMasterById)
 
   
   CIEC_BOOL &QI() {
@@ -99,6 +100,7 @@ public:
   CBacnetClientConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes);
   ~CBacnetClientConfigFB();
 
+  //TODO MAKE PROTECTED
   forte::core::io::IODeviceController* createDeviceController(CDeviceExecution& paDeviceExecution);
 
   void setConfig();

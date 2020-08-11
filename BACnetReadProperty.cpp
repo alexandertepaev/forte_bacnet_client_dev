@@ -71,9 +71,9 @@ bool CBacnetReadPropertyConfigFB::initHandle(CBacnetClientController *paControll
   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, SERVICE_CONFIRMED_READ_PROPERTY, getIECDataType(m_stServiceConfig->mObjectType), this);
   // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_READ_PROPERTY, this);
 
-  paController->addHandle(desc);
+  paController->addHandle(desc); 
 
-  if(mServiceHandle == 0)
+  if(mServiceHandle == 0) // TODO -- NOT NEEDED, DO EVERETHING THROUGH HANDLES!!!
     return false;
 
   return true;

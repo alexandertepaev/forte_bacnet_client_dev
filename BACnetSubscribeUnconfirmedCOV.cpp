@@ -62,7 +62,7 @@ bool CBacnetSubscribeUnconfirmedCOVConfigFB::initHandle(CBacnetClientController 
 
   paController->addHandle(desc);
 
-  if(mServiceHandle == 0)
+  if(mServiceHandle == 0)  // TODO -- NOT NEEDED, DO EVERETHING THROUGH HANDLES!!!
     return false;
 
   return true;

@@ -1,7 +1,8 @@
 #ifndef _BACNET_SERVICE_CONFIG_FB_H_
 #define _BACNET_SERVICE_CONFIG_FB_H_
 
-#include"../../forte-incubation_1.11.0/src/core/io/configFB/io_base.h"
+// #include"../../forte-incubation_1.11.0/src/core/io/configFB/io_base.h"
+#include <core/io/configFB/io_base.h>
 #include "include/bacnet.h"
 #include "BACnetAdapter.h"
 

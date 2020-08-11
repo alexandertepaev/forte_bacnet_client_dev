@@ -68,7 +68,7 @@ bool CBacnetWritePropertyConfigFB::initHandle(CBacnetClientController *paControl
   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, SERVICE_CONFIRMED_WRITE_PROPERTY,  getIECDataType(m_stServiceConfig->mObjectType), this);
   // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_WRITE_PROPERTY, this);
 
-  paController->addHandle(desc);
+  paController->addHandle(desc); // TODO -- NOT NEEDED, DO EVERETHING THROUGH HANDLES!!!
 
   if(mServiceHandle == 0)
     return false;

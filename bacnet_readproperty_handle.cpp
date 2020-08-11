@@ -23,8 +23,9 @@ void CBacnetReadPropertyHandle::get(CIEC_ANY &paValue) {
     m_eHandleState = e_AwaitingResponse;
   } else if (m_eHandleState == e_AwaitingResponse) {
 
-    if(mType == CIEC_ANY::e_DWORD) {
-      static_cast<CIEC_DWORD&>(paValue) = *static_cast<CIEC_DWORD *>(mValue);
+    if(mType == CIEC_ANY::e_DWORD) { //TODO CIEC_ANY::e_REAL
+      //static_cast<CIEC_DWORD&>(paValue) = *static_cast<CIEC_DWORD *>(mValue);
+      static_cast<CIEC_REAL&>(paValue) = *static_cast<CIEC_REAL *>(mValue);
     } else if (mType == CIEC_ANY::e_BOOL) {
       static_cast<CIEC_BOOL&>(paValue) = *static_cast<CIEC_BOOL *>(mValue);
     }
@@ -78,7 +79,8 @@ void CBacnetReadPropertyHandle::decodeServiceResp(uint8_t *pdu, const uint32_t &
     if(value.tag == BACNET_APPLICATION_TAG_REAL) {
 
       DEVLOG_DEBUG("[CBacnetReadPropertyHandle] Application Value=%f (Real) \n", value.type.Real);
-      mValue->setValue(static_cast<CIEC_DWORD>(value.type.Real));
+      //mValue->setValue(static_cast<CIEC_DWORD>(value.type.Real));
+      mValue->setValue(static_cast<CIEC_REAL>(value.type.Real));
       fireConfirmationEvent();
 
     } else if(value.tag == BACNET_APPLICATION_TAG_ENUMERATED && mType == CIEC_ANY::e_BOOL ) {

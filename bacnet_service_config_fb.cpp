@@ -1,5 +1,6 @@
 #include "bacnet_service_config_fb.h"
-#include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
+// #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
+#include <core/io/mapper/io_mapper.h>
 #include "bacnet_client_controller.h"
 #include "BACnetClient.h"
 
@@ -69,7 +70,7 @@ void CBacnetServiceConfigFB::executeEvent(int pa_nEIID){
 
     if(BACnetAdapterOut().getPeer() == 0) {
       // backpropagate inito
-      BACnetAdapterIn().QO() = QO();
+      BACnetAdapterIn().QO() = QO(); // TODO is QO() needed? -NO!
       sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
     } else {
       // forward init
@@ -110,7 +111,7 @@ const char *CBacnetServiceConfigFB::init() {
 
   CBacnetClientController *clientController = static_cast<CBacnetClientController *>(CBacnetClientConfigFB::getClientConfigFB()->getDeviceController());
 
-  if(!initHandle(clientController))
+  if(!initHandle(clientController)) // TODO check overriden initHandle functions, some code can be used frome here :) ++ REDUCES "friends"
     return scmHandleInitFailed;
 
   clientController->updateSCFBsList(this);

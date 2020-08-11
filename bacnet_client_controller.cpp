@@ -28,6 +28,7 @@ void CBacnetClientController::setConfig(Config* paConfig) {
 
 
 const char* CBacnetClientController::init() {
+
   // SCFB list
   pmServiceConfigFBsList = new TServiceConfigFBsList();
   // ringbuffer
@@ -52,8 +53,9 @@ const char* CBacnetClientController::init() {
 }
 
 //TODO: set default to eth0
-#define NETWORK_IFACE_NAME "enp0s25"
-//#define NETWORK_IFACE_NAME "eth0" //FIXME
+//#define NETWORK_IFACE_NAME "enp0s25"
+//#define NETWORK_IFACE_NAME "eth0"
+#define NETWORK_IFACE_NAME "wlan0"
 //#define NETWORK_IFACE_NAME "wlp4s0"
 
 
@@ -156,6 +158,7 @@ int CBacnetClientController::receivePacket(uint16_t timeout, sockaddr_in *src) {
     }
 
     // msg from myself -- ignore
+    // TODO messages from myself are ignored if src == NULL (not passed to the function)
     if(src != NULL && src->sin_addr.s_addr == mLocalAddr.s_addr && src->sin_port == htons(mPort)) { 
       return 0;
     } else {
@@ -665,24 +668,6 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
 
   HandleDescriptor *desc = static_cast<CBacnetClientController::HandleDescriptor *>(handleDescriptor);
   
-  // CIEC_ANY::EDataTypeID data_type = CIEC_ANY::e_ANY;
-
-  // if( desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_OUTPUT || 
-  //       desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_ANALOG_INPUT ||
-  //       desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_ANALOG_VALUE) { // TODO - check in scfb (rp,wp) if it tgt object prop is present value/cov increment
-
-  //       data_type = CIEC_ANY::e_DWORD;
-
-  // } else if ( desc->mServiceConfigFB->m_stServiceConfig->mObjectType == OBJECT_BINARY_OUTPUT || 
-  //             desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_INPUT ||
-  //             desc->mServiceConfigFB->m_stServiceConfig->mObjectType ==  OBJECT_BINARY_VALUE) { // TODO - check in scfb (rp,wp) if it tgt object prop is present value/cov increment
-
-  //       data_type = CIEC_ANY::e_BOOL;
-
-  // } else {
-  //   return 0;
-  // }
-
   switch (desc->mServiceType)
   {
     case SERVICE_CONFIRMED_READ_PROPERTY:
