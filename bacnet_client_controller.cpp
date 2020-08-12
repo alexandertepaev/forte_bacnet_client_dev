@@ -399,31 +399,34 @@ void CBacnetClientController::handleCOVSubscriptionAck(CBacnetSubscribeUnconfirm
 
 
 void CBacnetClientController::notifyConfigFBs() {
-  
-    // iterate through the config fbs list
-    TServiceConfigFBsList::Iterator itEnd = pmServiceConfigFBsList->end();
-    for(TServiceConfigFBsList::Iterator it = pmServiceConfigFBsList->begin(); it != itEnd; ++it){
-      if(!getAddressByDeviceId((*it)->m_stServiceConfig->mDeviceId, NULL, NULL)) {
-        (*it)->setNotificationType(CBacnetServiceConfigFB::e_AddrFetchFailed);
-        startNewEventChain((*it));
-        pmServiceConfigFBsList->erase((*it));
-      } else {
-        if((*it)->mServiceType == CBacnetServiceConfigFB::e_UnconfirmedCOVSub){
-          CBacnetSubscribeUnconfirmedCOVConfigFB *covSubFB = static_cast<CBacnetSubscribeUnconfirmedCOVConfigFB *>((*it));
-          if(!(covSubFB->mSubscriptionAcknowledged)){
-            covSubFB->setNotificationType(CBacnetServiceConfigFB::e_COVSubscriptionFailed);
-            startNewEventChain(covSubFB);
-            pmServiceConfigFBsList->erase(covSubFB);
-            continue;
-          } else {
-            pmCOVSubscribers->pushBack(covSubFB);
-          }
-        }
 
-        (*it)->setNotificationType(CBacnetServiceConfigFB::e_Success);
-        startNewEventChain((*it));
+  TServiceConfigFBsList::Iterator it = pmServiceConfigFBsList->begin();
+  while(it != pmServiceConfigFBsList->end()){
+    // work with a copy in order to avoid dangling pointer in case of erase 
+    TServiceConfigFBsList::Iterator _it = it; 
+    ++it;
+
+    if(!getAddressByDeviceId((*_it)->m_stServiceConfig->mDeviceId, NULL, NULL)) {
+        (*_it)->setNotificationType(CBacnetServiceConfigFB::e_AddrFetchFailed);
+        startNewEventChain((*_it));
+        pmServiceConfigFBsList->erase((*_it));
+    } else {
+      if((*_it)->mServiceType == CBacnetServiceConfigFB::e_UnconfirmedCOVSub){
+        CBacnetSubscribeUnconfirmedCOVConfigFB *covSubFB = static_cast<CBacnetSubscribeUnconfirmedCOVConfigFB *>((*_it));
+        if(!(covSubFB->mSubscriptionAcknowledged)){
+          covSubFB->setNotificationType(CBacnetServiceConfigFB::e_COVSubscriptionFailed);
+          startNewEventChain(covSubFB);
+          pmServiceConfigFBsList->erase(covSubFB);
+          continue;
+        } else {
+          pmCOVSubscribers->pushBack(covSubFB);
+        }
       }
+
+      (*_it)->setNotificationType(CBacnetServiceConfigFB::e_Success);
+      startNewEventChain((*_it));
     }
+  }
 }
 
 
@@ -492,12 +495,16 @@ void CBacnetClientController::deregisterTransaction(STransactionListEntry *paTra
 void CBacnetClientController::checkTransactionDeadlines() {
   timespec now;
   clock_gettime(CLOCK_MONOTONIC, &now);
-  TTransactionList::Iterator itEnd = mActiveTransactions->end();
-  for(TTransactionList::Iterator it = mActiveTransactions->begin(); it != itEnd; ++it) {
-    if(timespecLessThan(&((*it)->mDeadline), &now)){
-      DEVLOG_DEBUG("[CBacnetClientController] checkTransactionsDeadlines() --- deadline missed, invokeid=%d\n", (*it)->mInvokeId);
-      (*it)->mHandle->missedTransactionDeadline();
-      deregisterTransaction((*it));
+  TTransactionList::Iterator it = mActiveTransactions->begin();
+  while(it != mActiveTransactions->end()){
+    // work with a copy to avoid dangling pointer in case of erase
+    TTransactionList::Iterator _it = it; 
+    ++it;
+    //check deadline, notify handle and deregister transaction in case of a missed deadline
+    if(timespecLessThan(&((*_it)->mDeadline), &now)){
+      DEVLOG_DEBUG("[CBacnetClientController] checkTransactionsDeadlines() --- deadline missed, invokeid=%d\n", (*_it)->mInvokeId);
+      (*_it)->mHandle->missedTransactionDeadline();
+      deregisterTransaction((*_it));
     }
   }
 }
@@ -617,11 +624,16 @@ void CBacnetClientController::handleAPDU(uint8_t *apdu, const uint32_t &apdu_len
 
 
 void CBacnetClientController::handleServiceAck(uint8_t paInvokeID, uint8_t *apdu, const uint32_t &apdu_len) {
-  TTransactionList::Iterator itEnd = mActiveTransactions->end();
-  for(TTransactionList::Iterator it = mActiveTransactions->begin(); it != itEnd; ++it) {
-    if((*it)->mInvokeId == paInvokeID){
-      (*it)->mHandle->decodeServiceResp(apdu, apdu_len);
-      deregisterTransaction((*it));
+  
+  TTransactionList::Iterator it = mActiveTransactions->begin();
+  while(it != mActiveTransactions->end()){
+    // work with a copy to avoid dangling pointer in case of erase
+    TTransactionList::Iterator _it = it; 
+    ++it;
+    // decode response and deregister transaction
+    if((*_it)->mInvokeId == paInvokeID){
+      (*_it)->mHandle->decodeServiceResp(apdu, apdu_len);
+      deregisterTransaction((*_it));
     }
   }
 }
