@@ -6,7 +6,8 @@
 #include <extevhan.h>
 // #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_handle.h"
 #include <core/io/mapper/io_handle.h>
-#include "include/bacnet.h"
+// #include "include/bacnet.h"
+#include "forte_bacnet.h"
 #include <processinterface.h>
 
 
@@ -15,8 +16,6 @@ class CBacnetClientController;
 
 class CBacnetServiceHandle : public forte::core::io::IOHandle, protected CExternalEventHandler
 {
-private:
-  /* data */
 public:
   CBacnetServiceHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB);
   ~CBacnetServiceHandle();
@@ -42,8 +41,14 @@ public:
   enum EBacnetHandleState{
     e_Idle, e_AwaitingResponse 
   };
-
   EBacnetHandleState m_eHandleState;
+
+  enum EBacnetHandleType{
+    e_ReadPropertyServiceHandle,
+    e_WritePropertyServiceHandle,
+    e_UnconfirmedCOVServiceHandle 
+  };
+  EBacnetHandleType m_eHandleType;
 };
 
 #endif

@@ -5,7 +5,9 @@
 CBacnetWritePropertyHandle::CBacnetWritePropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution, paServiceConfigFB)
 {
 
-   DEVLOG_DEBUG("[CBacnetWritePropertyHandle] CBacnetWritePropertyHandle(): Initializing WriteProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, Priority=%d\n", paServiceConfigFB->m_stServiceConfig->mDeviceId, paServiceConfigFB->m_stServiceConfig->mObjectType, paServiceConfigFB->m_stServiceConfig->mObjectId, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mObjectProperty, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mArrayIndex, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mPriority);
+   DEVLOG_DEBUG("[CBacnetWritePropertyHandle] CBacnetWritePropertyHandle(): Initializing WriteProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, Priority=%d\n", paServiceConfigFB->m_stServiceConfig->mDeviceID, paServiceConfigFB->m_stServiceConfig->mObjectType, paServiceConfigFB->m_stServiceConfig->mObjectID, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mObjectProperty, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mArrayIndex, static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->mPriority);
+
+   m_eHandleType = e_WritePropertyServiceHandle;
 
 }
 
@@ -17,7 +19,7 @@ void CBacnetWritePropertyHandle::set(const CIEC_ANY &paValue) {
   if(m_eHandleState == e_Idle) {
     mValue->setValue(paValue);
     CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
-    controller->pushToRingbuffer(this);
+    controller->pushToRingBuffer(this);
     m_eHandleState = e_AwaitingResponse;
   } else if(m_eHandleState == e_AwaitingResponse) {
     m_eHandleState = e_Idle;
@@ -45,7 +47,7 @@ int CBacnetWritePropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &in
 
   BACNET_WRITE_PROPERTY_DATA data;
   data.object_type = static_cast<BACNET_OBJECT_TYPE>(mConfigFB->m_stServiceConfig->mObjectType);
-  data.object_instance = mConfigFB->m_stServiceConfig->mObjectId;
+  data.object_instance = mConfigFB->m_stServiceConfig->mObjectID;
   data.object_property = static_cast<BACNET_PROPERTY_ID>(static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(mConfigFB->m_stServiceConfig)->mObjectProperty);
   data.array_index = static_cast<CBacnetWritePropertyConfigFB::ServiceConfig *>(mConfigFB->m_stServiceConfig)->mArrayIndex;
 

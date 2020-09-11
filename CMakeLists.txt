@@ -2,7 +2,8 @@
 forte_add_module(BACnet_Client_1.11dev "BACnet_Client_1.11dev")
 SET(BACNET_LIB_DIR "" CACHE PATH "Path to Bacnet library directory ")
 
-forte_add_sourcefile_hcpp(BACnetClient)
+#forte_add_sourcefile_hcpp(BACnetClient)
+forte_add_sourcefile_hcpp(bacnet_client_config_fb)
 forte_add_sourcefile_hcpp(BACnetAdapter)
 forte_add_sourcefile_hcpp(bacnet_client_controller)
 forte_add_sourcefile_hcpp(bacnet_service_config_fb)

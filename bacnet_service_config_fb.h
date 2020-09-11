@@ -3,11 +3,12 @@
 
 // #include"../../forte-incubation_1.11.0/src/core/io/configFB/io_base.h"
 #include <core/io/configFB/io_base.h>
-#include "include/bacnet.h"
+// #include "include/bacnet.h"
+#include "forte_bacnet.h"
 #include "BACnetAdapter.h"
 
 class CBacnetServiceHandle;
-class CBacnetClientController;
+class CBacnetClientController; 
 
 class CBacnetServiceConfigFB: public forte::core::io::IOConfigFBBase {
 
@@ -73,12 +74,12 @@ public:
 
   // rework
   struct ServiceConfig {
-    uint32_t mDeviceId;
+    uint32_t mDeviceID;
     BACNET_OBJECT_TYPE mObjectType;
-    uint32_t mObjectId;
+    uint32_t mObjectID;
   
     ServiceConfig(uint32_t paDeviceId, BACNET_OBJECT_TYPE paObjectType, uint32_t paObjectId) :
-    mDeviceId(paDeviceId), mObjectType(paObjectType), mObjectId(paObjectId) {
+    mDeviceID(paDeviceId), mObjectType(paObjectType), mObjectID(paObjectId) {
 
     }
   };

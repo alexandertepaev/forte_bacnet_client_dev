@@ -2,7 +2,7 @@
 // #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
 #include <core/io/mapper/io_mapper.h>
 #include "bacnet_client_controller.h"
-#include "BACnetClient.h"
+#include "bacnet_client_config_fb.h"
 
 const char* const CBacnetServiceConfigFB::scmFBInitFailed = "FB initialization failed";
 const char* const CBacnetServiceConfigFB::scmHandleInitFailed = "Handle initialization failed";
@@ -70,19 +70,19 @@ void CBacnetServiceConfigFB::executeEvent(int pa_nEIID){
 
     if(BACnetAdapterOut().getPeer() == 0) {
       // backpropagate inito
-      BACnetAdapterIn().QO() = QO(); // TODO is QO() needed? -NO!
+      // BACnetAdapterIn().QO() = QO(); // TODO is QO() needed? -NO!
       sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
     } else {
       // forward init
-      BACnetAdapterOut().MasterId() = BACnetAdapterIn().MasterId();
-      BACnetAdapterOut().Index() = (TForteUInt16) (BACnetAdapterIn().Index() + 1);
-      BACnetAdapterOut().QI() = BACnetAdapterIn().QI();
+      // BACnetAdapterOut().MasterId() = BACnetAdapterIn().MasterId();
+      // BACnetAdapterOut().Index() = (TForteUInt16) (BACnetAdapterIn().Index() + 1);
+      // BACnetAdapterOut().QI() = BACnetAdapterIn().QI();
       sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, BACnetAdapter::scm_nEventINITID);
     }
 
   } else if(BACnetAdapterOut().INITO() == pa_nEIID) {
      // backpropagate inito
-      BACnetAdapterIn().QO() = BACnetAdapterOut().QO() && QO();
+      // BACnetAdapterIn().QO() = BACnetAdapterOut().QO() && QO();
       sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
   } else if(cg_nExternalEventID == pa_nEIID){
     switch(mNotificationType){
@@ -114,8 +114,6 @@ const char *CBacnetServiceConfigFB::init() {
   if(!initHandle(clientController)) // TODO check overriden initHandle functions, some code can be used frome here :) ++ REDUCES "friends"
     return scmHandleInitFailed;
 
-  clientController->updateSCFBsList(this);
-  
   setEventChainExecutor(m_poInvokingExecEnv);
   
   return 0;

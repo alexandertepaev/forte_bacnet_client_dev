@@ -56,25 +56,23 @@ bool CBacnetReadPropertyConfigFB::setConfig() {
   if(objType == MAX_BACNET_OBJECT_TYPE || 
       objProp == MAX_BACNET_PROPERTY_ID || 
       DeviceID() > BACNET_MAX_INSTANCE || 
-      ObjectID() > BACNET_MAX_INSTANCE)
-      return false;
-
+      ObjectID() > BACNET_MAX_INSTANCE) {
+        return false;
+      }
+      
   m_stServiceConfig = new ServiceConfig(DeviceID(), objType, ObjectID(), objProp, BACNET_ARRAY_ALL);
   return true;
 }
 
 bool CBacnetReadPropertyConfigFB::initHandle(CBacnetClientController *paController) {
 
-  
 
-  // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_READ_PROPERTY, getIECDataType(getObjectType(ObjectType())), this);
   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, SERVICE_CONFIRMED_READ_PROPERTY, getIECDataType(m_stServiceConfig->mObjectType), this);
-  // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_READ_PROPERTY, this);
 
   paController->addHandle(desc); 
 
-  if(mServiceHandle == 0) // TODO -- NOT NEEDED, DO EVERETHING THROUGH HANDLES!!!
-    return false;
+  // if(mServiceHandle == 0) // TODO -- NOT NEEDED, DO EVERETHING THROUGH HANDLES!!!
+  //   return false;
 
   return true;
 }

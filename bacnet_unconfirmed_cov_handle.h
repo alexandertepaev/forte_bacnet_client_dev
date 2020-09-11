@@ -10,9 +10,10 @@ class CBacnetServiceHandle;
 
 class CBacnetUnconfirmedCOVHandle : public CBacnetServiceHandle
 {
-private:
-  /* data */
 public:
+  
+  friend class CBacnetClientController;
+  
   CBacnetUnconfirmedCOVHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB);
   ~CBacnetUnconfirmedCOVHandle();
 
@@ -28,6 +29,16 @@ public:
   void subscriptionAcknowledged();
 protected:
   virtual void set(const CIEC_ANY &){};
+private:
+  struct SubscriptionData {
+    bool bAcknowledgedFlag;
+    TForteUInt8 nSubscriptionInvokeID;
+
+    // SubscriptionData() : bAcknowledgedFlag(false), nSubscriptionInvokeID(0) { }
+  };
+
+  SubscriptionData m_stSubscriptionData = { };
+
 };
 
 #endif
