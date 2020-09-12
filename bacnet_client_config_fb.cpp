@@ -67,7 +67,7 @@ void CBacnetClientConfigFB::executeEvent(int pa_nEIID){
   // in case BACnetAdapterOut().INITO is received, change client controller's state to address discovery
   // and call onStartup() of the base class, which results in issuing INITO output event
   if (BACnetAdapterOut().INITO() == pa_nEIID) {
-    static_cast<CBacnetClientController *>(getDeviceController())->m_eClientControllerState = CBacnetClientController::e_AddressDiscovery;
+    static_cast<CBacnetClientController *>(getDeviceController())->m_enClientControllerState = CBacnetClientController::AddressDiscovery;
     IOConfigFBController::onStartup();
   }    
 }
@@ -93,7 +93,7 @@ void CBacnetClientConfigFB::onStartup(){
   } else {
     // in case there is no other configuration FBs in the daisy-chain, change client controller's state to address discovery
     // and call onStartup() of the base class, which results in issuing INITO output event
-    static_cast<CBacnetClientController *>(getDeviceController())->m_eClientControllerState = CBacnetClientController::e_AddressDiscovery;
+    static_cast<CBacnetClientController *>(getDeviceController())->m_enClientControllerState = CBacnetClientController::AddressDiscovery;
     IOConfigFBController::onStartup();
   }
 }

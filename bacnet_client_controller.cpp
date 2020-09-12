@@ -4,10 +4,10 @@
 #include "bacnet_readproperty_handle.h"
 #include "bacnet_writeproperty_handle.h"
 #include "bacnet_unconfirmed_cov_handle.h"
-#include "BACnetSubscribeUnconfirmedCOV.h"
+#include "bacnet_subucov_service_config_fb.h"
 
 
-CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution) : forte::core::io::IODeviceController(paDeviceExecution), mCommunicationSocket(0), m_eClientControllerState(e_Init), m_nInvokeID(0)
+CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution) : forte::core::io::IODeviceController(paDeviceExecution), mCommunicationSocket(0), m_enClientControllerState(Init), m_nInvokeID(0)
 {
   // Zero the configuration struct
   memset(&(this->m_stConfig), 0, sizeof(this->m_stConfig)); 
@@ -162,7 +162,7 @@ forte::core::io::IOHandle* CBacnetClientController::initHandle(IODeviceControlle
   }
 
   mHandles->pushBack(handle); // update list of handles
-  createNewAddrTableEntry(handle->mConfigFB->m_stServiceConfig->mDeviceID); // update addr table
+  createNewAddrTableEntry(handle->mConfigFB->m_stServiceConfig->deviceID); // update addr table
 
   return handle;
 }
@@ -211,23 +211,23 @@ BACNET_ADDRESS CBacnetClientController::ipToBacnetAddress(const struct in_addr &
 
 void CBacnetClientController::runLoop() {
   while(isAlive()) {
-    switch(m_eClientControllerState) {
-      case e_Init:
+    switch(m_enClientControllerState) {
+      case Init:
         // do nothing
         // state change is performed by the client config fb upon the end of the initialization
         break;
-      case e_AddressDiscovery:
+      case AddressDiscovery:
         discoverNetworkAddresses();
-        m_eClientControllerState = e_COVSubscription;
+        m_enClientControllerState = COVSubscription;
         break;
-      case e_COVSubscription:
+      case COVSubscription:
         subscribeToCOVNotifications();
-        m_eClientControllerState = e_ConfigFBsNotification;
+        m_enClientControllerState = ConfigFBsNotification;
         break;
-      case e_ConfigFBsNotification:
+      case ConfigFBsNotification:
         notifyConfigFBs();
-        m_eClientControllerState = e_NormalOperation;
-      case e_NormalOperation:
+        m_enClientControllerState = NormalOperation;
+      case NormalOperation:
         executeOperationCycle();
         break;
       default:
@@ -341,7 +341,7 @@ void CBacnetClientController::sendUnconfirmedCOVSubscribe(CBacnetUnconfirmedCOVH
   struct in_addr destinationAddr;
   uint16_t destinationPort;
 
-  if(!getAddressByDeviceID(paHandle->mConfigFB->m_stServiceConfig->mDeviceID, &destinationAddr, &destinationPort))
+  if(!getAddressByDeviceID(paHandle->mConfigFB->m_stServiceConfig->deviceID, &destinationAddr, &destinationPort))
     return; // address is not founds
 
   //encode npdu part: reply expected, normal priority + addresses
@@ -354,8 +354,8 @@ void CBacnetClientController::sendUnconfirmedCOVSubscribe(CBacnetUnconfirmedCOVH
   //encode apdu: target object, target object's ID, hardcoded process identifier, unconfirmed notifications, infinite lifetime
   BACNET_SUBSCRIBE_COV_DATA COVData;
   memset(&COVData, 0, sizeof(BACNET_SUBSCRIBE_COV_DATA));
-  COVData.monitoredObjectIdentifier.type = paHandle->mConfigFB->m_stServiceConfig->mObjectType;
-  COVData.monitoredObjectIdentifier.instance = paHandle->mConfigFB->m_stServiceConfig->mObjectID;
+  COVData.monitoredObjectIdentifier.type = paHandle->mConfigFB->m_stServiceConfig->objectType;
+  COVData.monitoredObjectIdentifier.instance = paHandle->mConfigFB->m_stServiceConfig->objectID;
   COVData.subscriberProcessIdentifier = 1; // hardcoded process identifier
   COVData.issueConfirmedNotifications = false; // hardcoded
   COVData.lifetime = COV_INFINITE_LIFETIME; // hardcoded infinite lifetime
@@ -367,7 +367,7 @@ void CBacnetClientController::sendUnconfirmedCOVSubscribe(CBacnetUnconfirmedCOVH
   mSendBuffer[BVLC_FUNCTION_BYTE] = BVLC_ORIGINAL_UNICAST_NPDU;
   encode_unsigned16(&mSendBuffer[BVLC_LEN_BYTE], PDULen);
   // send packet
-  DEVLOG_DEBUG("[CBacnetClientController] sendUnconfirmedCOVSubscribe(): subscribing to DeviceID=%d, ObjectType=%d, ObjectID=%d\n", paHandle->mConfigFB->m_stServiceConfig->mDeviceID, paHandle->mConfigFB->m_stServiceConfig->mObjectType, paHandle->mConfigFB->m_stServiceConfig->mObjectID);
+  DEVLOG_DEBUG("[CBacnetClientController] sendUnconfirmedCOVSubscribe(): subscribing to DeviceID=%d, ObjectType=%d, ObjectID=%d\n", paHandle->mConfigFB->m_stServiceConfig->deviceID, paHandle->mConfigFB->m_stServiceConfig->objectType, paHandle->mConfigFB->m_stServiceConfig->objectID);
   sendPacket(PDULen, destinationAddr, destinationPort);
 }
 
@@ -400,9 +400,9 @@ void CBacnetClientController::notifyConfigFBs() {
   THandlesList::Iterator itEnd = mHandles->end();
   for(THandlesList::Iterator it = mHandles->begin(); it != itEnd; ++it){
     // address check
-    if(!getAddressByDeviceID((*it)->mConfigFB->m_stServiceConfig->mDeviceID, NULL, NULL)) {
+    if(!getAddressByDeviceID((*it)->mConfigFB->m_stServiceConfig->deviceID, NULL, NULL)) {
       // address not found (getAddressByDeviceID() returns 'false' if it equals zero) -> notify about addr fetch failure
-      notifyConfigFB(CBacnetServiceConfigFB::e_AddrFetchFailed, (*it)->mConfigFB);
+      notifyConfigFB(CBacnetServiceConfigFB::AddrFetchFailed, (*it)->mConfigFB);
       continue;
     }
     // cov subscription acknowledged check
@@ -410,14 +410,14 @@ void CBacnetClientController::notifyConfigFBs() {
       CBacnetUnconfirmedCOVHandle *covHandle = static_cast<CBacnetUnconfirmedCOVHandle *>(*it);
       if(!covHandle->m_stSubscriptionData.bAcknowledgedFlag){
         // cov subscription wasn't acknowledged -> notify about subscription failure
-        notifyConfigFB(CBacnetServiceConfigFB::e_COVSubscriptionFailed, (*it)->mConfigFB);
+        notifyConfigFB(CBacnetServiceConfigFB::COVSubscriptionFailed, (*it)->mConfigFB);
         continue;
       }
       // acknowledged -> push to the list of COV handles (needed for relating received COV notifications to proper handles)
       mCOVHandles->pushBack(covHandle);
     }
     // everything is good -> notify configuratuion fb about success
-    notifyConfigFB(CBacnetServiceConfigFB::e_Success, (*it)->mConfigFB);
+    notifyConfigFB(CBacnetServiceConfigFB::Success, (*it)->mConfigFB);
   }
   // clear and delete the handles list, not needed anymore
   mHandles->clearAll();
@@ -474,7 +474,7 @@ CBacnetServiceHandle * CBacnetClientController::consumeFromRingBuffer(){
 
 void CBacnetClientController::encodeRequest(CBacnetServiceHandle *paHandle, TForteUInt8 &paInvokeID, TForteUInt16 &paRequestLen, in_addr &paDestinationAddr, TForteUInt16 &paDestinationPort){
   // get network address and convert it to the libbacnet's addr structure
-  getAddressByDeviceID(paHandle->mConfigFB->m_stServiceConfig->mDeviceID, &paDestinationAddr, &paDestinationPort);
+  getAddressByDeviceID(paHandle->mConfigFB->m_stServiceConfig->deviceID, &paDestinationAddr, &paDestinationPort);
   BACNET_ADDRESS dest = ipToBacnetAddress(paDestinationAddr, paDestinationPort, false);
   BACNET_ADDRESS src = ipToBacnetAddress(m_stConfig.stLocalAddr, m_stConfig.nPort, false);
   // get next invoke id
@@ -647,9 +647,9 @@ void CBacnetClientController::handleUnconfirmedCOVNotifation(TForteUInt8 *paAPDU
   // find corresponding handle in the cov handles list
   TCOVHandlesList::Iterator itEnd = mCOVHandles->end();
   for(TCOVHandlesList::Iterator it = mCOVHandles->begin(); it != itEnd; ++it){
-    if((*it)->mConfigFB->m_stServiceConfig->mDeviceID == COVData.initiatingDeviceIdentifier &&
-        (*it)->mConfigFB->m_stServiceConfig->mObjectType == COVData.monitoredObjectIdentifier.type &&
-        (*it)->mConfigFB->m_stServiceConfig->mObjectID == COVData.monitoredObjectIdentifier.instance) {
+    if((*it)->mConfigFB->m_stServiceConfig->deviceID == COVData.initiatingDeviceIdentifier &&
+        (*it)->mConfigFB->m_stServiceConfig->objectType == COVData.monitoredObjectIdentifier.type &&
+        (*it)->mConfigFB->m_stServiceConfig->objectID == COVData.monitoredObjectIdentifier.instance) {
           (*it)->notificationReceived(propertyValue[0]); 
     }
   }

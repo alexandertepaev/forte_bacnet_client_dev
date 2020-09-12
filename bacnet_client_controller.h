@@ -44,7 +44,7 @@ class CBacnetUnconfirmedCOVHandle;
  * Features:
  *    + Created and maintained by the client configuration fb upon the initalization.
  *    + Creates and maintains BACnet service handles (see initHandles).
- *    + Has 5 states: Initialization state, Address discovery state, COV subscription state, Configuration FBs notification state, Normal Operation state (see m_eClientControllerState member).
+ *    + Has 5 states: Initialization state, Address discovery state, COV subscription state, Configuration FBs notification state, Normal Operation state (see m_enClientControllerState member).
  *    + Runs an infinite loop in another thread, while the thread is alive (see runLoop method).
  *    + Performs 5 different tasks depending on its current state.
  */
@@ -105,13 +105,13 @@ private:
 
   //! States of the client controller
   enum EBacnetClientControllerState {
-    e_Init,
-    e_AddressDiscovery,
-    e_COVSubscription, 
-    e_ConfigFBsNotification,
-    e_NormalOperation
+    Init,
+    AddressDiscovery,
+    COVSubscription, 
+    ConfigFBsNotification,
+    NormalOperation
   };
-  EBacnetClientControllerState m_eClientControllerState;
+  EBacnetClientControllerState m_enClientControllerState;
 
   //! Controller's configuration struct
   struct SBacnetClientControllerConfig : forte::core::io::IODeviceController::Config {
@@ -304,11 +304,11 @@ private:
    *
    * This method represents the loop which is executed by the client controller thread
    * Inside the loop, five different actions are performed based on the current state of the client controller
-   * e_Init - nothing
-   * e_AddressDiscovery - discoverNetworkAddresses()
-   * e_COVSubscription - subscribeToCOVNotifications()
-   * e_ConfigFBsNotification - notifyConfigFBs()
-   * e_NormalOperation - executeOperationCycle()
+   * Init - nothing
+   * AddressDiscovery - discoverNetworkAddresses()
+   * COVSubscription - subscribeToCOVNotifications()
+   * ConfigFBsNotification - notifyConfigFBs()
+   * NormalOperation - executeOperationCycle()
    */
   void runLoop();
 
@@ -427,7 +427,7 @@ private:
   
   /*! @brief Executes a series of methods during the normal operation state of the controller
    *
-   * This method is executed during the e_NormalOperation state of the controller.
+   * This method is executed during the NormalOperation state of the controller.
    * Its execution consists of the following steps: 
    *    1) Check the size of the ring buffer with handles wanting to send a request
    *      1.1) If the size is not zero, get the handle, encode and send a packet + register the transaction into the list of active transaction

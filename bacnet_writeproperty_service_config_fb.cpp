@@ -1,15 +1,19 @@
-/*************************************************************************
- *** FORTE Library Element
- ***
- *** This file was generated using the 4DIAC FORTE Export Filter V1.0.x!
- ***
- *** Name: BACnetWriteProperty
- *** Description: Service Interface Function Block Type
- *** Version: 
- ***     1.0: 2019-12-30/root -  - 
- *************************************************************************/
+/*******************************************************************************
+ * Copyright (c) 2017 - 2020 fortiss GmbH
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Alexander Tepaev - initial implementation and documentation
+ *******************************************************************************/
 
-#include "BACnetWriteProperty.h"
+#include "bacnet_writeproperty_service_config_fb.h"
+#ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
+#include "bacnet_writeproperty_service_config_fb_gen.cpp"
+#endif
 #include "bacnet_client_controller.h"
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "BACnetWriteProperty_gen.cpp"
@@ -41,15 +45,15 @@ const SFBInterfaceSpec CBacnetWritePropertyConfigFB::scm_stFBInterfaceSpec = {
 
 
 CBacnetWritePropertyConfigFB::CBacnetWritePropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
-CBacnetServiceConfigFB(e_WriteProperty, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
+CBacnetServiceConfigFB(pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {
 };
 
 CBacnetWritePropertyConfigFB::~CBacnetWritePropertyConfigFB(){
 }
 
 bool CBacnetWritePropertyConfigFB::setConfig() {
-  BACNET_OBJECT_TYPE objType = getObjectType(ObjectType());
-  BACNET_PROPERTY_ID objProp = getObjectProperty(ObjectProperty());
+  BACNET_OBJECT_TYPE objType = stringToBacnetObjectType(ObjectType()); // set to MAX_BACNET_OBJECT_TYPE if not supported
+  BACNET_PROPERTY_ID objProp = stringToBacnetObjectProperty(ObjectProperty()); // set to MAX_BACNET_OBJECT_TYPE if not supported
 
   if(objType == MAX_BACNET_OBJECT_TYPE || 
       objProp == MAX_BACNET_PROPERTY_ID || 
@@ -59,20 +63,14 @@ bool CBacnetWritePropertyConfigFB::setConfig() {
       Priority() > BACNET_MAX_PRIORITY)
       return false;
 
-  m_stServiceConfig = new ServiceConfig(DeviceID(), objType, ObjectID(), objProp, BACNET_ARRAY_ALL, Priority()); // TODO BACNET_ARRAY_ALL?
+  m_stServiceConfig = new SServiceConfig(DeviceID(), objType, ObjectID(), objProp, BACNET_ARRAY_ALL, BACNET_WRITEPROP_LOWEST_PRIO); // BACNET_ARRAY_ALL hardcoded, BACNET_WRITEPROP_LOWEST_PRIO hardcoded
   return true;
 }
 
 bool CBacnetWritePropertyConfigFB::initHandle(CBacnetClientController *paController) {
-  // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_WRITE_PROPERTY,  getIECDataType(getObjectType(ObjectType())), this);
-  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, SERVICE_CONFIRMED_WRITE_PROPERTY,  getIECDataType(m_stServiceConfig->mObjectType), this);
-  // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_WRITE_PROPERTY, this);
-
-  paController->addHandle(desc); // TODO -- NOT NEEDED, DO EVERETHING THROUGH HANDLES!!!
-
-  if(mServiceHandle == 0)
-    return false;
-
+   // HandleDescriptor(observer name string, direction, service type, IEC datatype of the communicated data, pointer to this config fb)
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::Out, SERVICE_CONFIRMED_WRITE_PROPERTY,  objectPropertyAndTypeToIECDataType(stringToBacnetObjectType(ObjectType()), stringToBacnetObjectProperty(ObjectProperty())), this);
+  paController->addHandle(desc);
   return true;
 }
 

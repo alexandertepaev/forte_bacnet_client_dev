@@ -3,14 +3,14 @@
  ***
  *** This file was generated using the 4DIAC FORTE Export Filter V1.0.x!
  ***
- *** Name: BACnetReadProperty
+ *** Name: BACnetSubscribeUnconfirmedCOV
  *** Description: Service Interface Function Block Type
  *** Version: 
- ***     1.0: 2019-10-30/root -  - 
+ ***     1.0: 2020-01-18/root -  - 
  *************************************************************************/
 
-#ifndef _BACNETREADPROPERTY_H_
-#define _BACNETREADPROPERTY_H_
+#ifndef _BACNETSUBSCRIBEUNCONFIRMEDCOV_H_
+#define _BACNETSUBSCRIBEUNCONFIRMEDCOV_H_
 
 #include <funcbloc.h>
 #include <forte_bool.h>
@@ -20,8 +20,20 @@
 #include "BACnetAdapter.h"
 #include "bacnet_service_config_fb.h"
 
-class CBacnetReadPropertyConfigFB: public CBacnetServiceConfigFB {
-  DECLARE_FIRMWARE_FB(CBacnetReadPropertyConfigFB)
+
+/*! @brief Concrete class representing BACnet SubscribeCOV service configuration fb
+ *
+ * SubscribeCOV Service Configuration FB class. 
+ * BACnet SubscribeCOV Service Configuration FB is a FB that is responible for configuration of 
+ * a BACnet SubscribeCOV server request and a creation of a corresepnding service handle.
+ */
+class CBacnetSubscribeUnconfirmedCOVConfigFB: public CBacnetServiceConfigFB {
+  DECLARE_FIRMWARE_FB(CBacnetSubscribeUnconfirmedCOVConfigFB)
+
+public:
+  CBacnetSubscribeUnconfirmedCOVConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes);
+  ~CBacnetSubscribeUnconfirmedCOVConfigFB();
+
 
 private:
   static const CStringDictionary::TStringId scm_anDataInputNames[];
@@ -44,14 +56,6 @@ private:
 
   CIEC_UINT &ObjectID() {
     return *static_cast<CIEC_UINT*>(getDI(4));
-  };
-
-  CIEC_WSTRING &ObjectProperty() {
-    return *static_cast<CIEC_WSTRING*>(getDI(5));
-  };
-
-  CIEC_UINT &ArrayIndex() {
-    return *static_cast<CIEC_UINT*>(getDI(6));
   };
 
   static const CStringDictionary::TStringId scm_anDataOutputNames[];
@@ -81,32 +85,27 @@ private:
   static const int scm_nBACnetAdapterInAdpNum = 1;
   static const SFBInterfaceSpec scm_stFBInterfaceSpec;
 
-   FORTE_FB_DATA_ARRAY(1, 7, 2, 2);
+   FORTE_FB_DATA_ARRAY(1, 5, 2, 2);
 
+  /*! @brief Sets configuration struct
+  *
+  * Overriden absctract method of CBacnetServiceConfigFB class, which is used for checking
+  * the configuration data found on the FBs input interface and storing this data into the
+  * configuration struct (m_stServiceConfig).
+  * 
+  * @return 'true' in case of success, 'false' otherwise
+  */
   bool setConfig();
-
+  
+  /*! @brief Creates a handle descriptor and passes it to client controller for the initialization of a service handle
+   *
+   * In this method, a handle descriptor is created and passed as an argument to the client controller's addHandle method.
+   * In the initHandle method, specific BACnet service handle instance is created and registered into the IOMapper.
+   * 
+   * @param paController Pointer to the client controller instance
+   * @return 'true' in case of success, 'false' otherwise
+   */
   bool initHandle(CBacnetClientController *paController);
-
-  int m_nIndex;
-
-public:
-
-  CBacnetReadPropertyConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes);
-
-  ~CBacnetReadPropertyConfigFB();
-
-  struct ServiceConfig : CBacnetServiceConfigFB::ServiceConfig {
-
-    uint32_t mObjectProperty;
-    uint32_t mArrayIndex; // hardcoded for now, since it is an optional parameter
-    
-    ServiceConfig(uint32_t paDeviceId, BACNET_OBJECT_TYPE paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex) :
-    CBacnetServiceConfigFB::ServiceConfig(paDeviceId, paObjectType, paObjectId), mObjectProperty(paObjectProperty), mArrayIndex(paArrayIndex) {
-      
-    };
-  };
-
-
 };
 
 #endif //close the ifdef sequence from the beginning of the file

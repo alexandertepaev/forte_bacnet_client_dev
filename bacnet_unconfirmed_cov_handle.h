@@ -2,7 +2,7 @@
 #define _BACNET_UNCONFIRMED_COV_HANDLE_H_
 
 
-#include "BACnetSubscribeUnconfirmedCOV.h"
+#include "bacnet_subucov_service_config_fb.h"
 #include "bacnet_service_handle.h"
 
 

@@ -1,16 +1,9 @@
 #include "bacnet_service_config_fb.h"
-// #include "../../forte-incubation_1.11.0/src/core/io/mapper/io_mapper.h"
 #include <core/io/mapper/io_mapper.h>
 #include "bacnet_client_controller.h"
 #include "bacnet_client_config_fb.h"
 
-const char* const CBacnetServiceConfigFB::scmFBInitFailed = "FB initialization failed";
-const char* const CBacnetServiceConfigFB::scmHandleInitFailed = "Handle initialization failed";
-const char* const CBacnetServiceConfigFB::scmAddrFetchFailed = "Address discovery failed";
-const char* const CBacnetServiceConfigFB::scmCOVSubscriptionFailed = "COV subscription failed";
-const char* const CBacnetServiceConfigFB::scmInitOK = "Initialized";
-
-CBacnetServiceConfigFB::CBacnetServiceConfigFB(EServiceType paServiceType, CResource *paSrcRes, const SFBInterfaceSpec *paInterfaceSpec, const CStringDictionary::TStringId paInstanceNameId, TForteByte *paFBConnData, TForteByte *paFBVarsData): forte::core::io::IOConfigFBBase(paSrcRes, paInterfaceSpec, paInstanceNameId, paFBConnData, paFBVarsData), mServiceType(paServiceType), m_stServiceConfig(0), mServiceHandle(0), mNotificationType(e_UnknownNotificationType)
+CBacnetServiceConfigFB::CBacnetServiceConfigFB(CResource *paSrcRes, const SFBInterfaceSpec *paInterfaceSpec, const CStringDictionary::TStringId paInstanceNameId, TForteByte *paFBConnData, TForteByte *paFBVarsData): forte::core::io::IOConfigFBBase(paSrcRes, paInterfaceSpec, paInstanceNameId, paFBConnData, paFBVarsData), m_stServiceConfig(0), m_enNotificationType(UnknownNotificationType)
 {
 }
 
@@ -19,84 +12,43 @@ CBacnetServiceConfigFB::~CBacnetServiceConfigFB()
 }
 
 
-BACNET_OBJECT_TYPE CBacnetServiceConfigFB::getObjectType(CIEC_WSTRING paObjectType) {
-  if(paObjectType == "ANALOG_OUTPUT") {
-    return OBJECT_ANALOG_OUTPUT;
-  } else if (paObjectType == "ANALOG_INPUT") {
-    return OBJECT_ANALOG_INPUT;
-  } else if (paObjectType == "ANALOG_VALUE") {
-    return OBJECT_ANALOG_VALUE;
-  } else if (paObjectType == "BINARY_OUTPUT") {
-    return OBJECT_BINARY_OUTPUT;
-  } else if (paObjectType == "BINARY_INPUT") {
-    return OBJECT_BINARY_INPUT;
-  } else if (paObjectType == "BINARY_VALUE") {
-    return OBJECT_BINARY_VALUE;
-  } else {
-    return MAX_BACNET_OBJECT_TYPE;
-  }
-}
-
-BACNET_PROPERTY_ID CBacnetServiceConfigFB::getObjectProperty(CIEC_WSTRING paObjectProperty) {
-  if(paObjectProperty == "PRESENT_VALUE"){
-    return PROP_PRESENT_VALUE;
-  } else if (paObjectProperty == "COV_INCREMENT") {
-    return PROP_COV_INCREMENT;
-  } else {
-    return MAX_BACNET_PROPERTY_ID;
-  }
-}
-
-void CBacnetServiceConfigFB::setHandle(CBacnetServiceHandle* handle) {
-  mServiceHandle = handle;
-}
-
-
 void CBacnetServiceConfigFB::setNotificationType(EServiceConfigFBNotificationType paNotifycationType) {
-  mNotificationType = paNotifycationType;
+  m_enNotificationType = paNotifycationType;
 }
 
 void CBacnetServiceConfigFB::executeEvent(int pa_nEIID){
   if(BACnetAdapterIn().INIT() == pa_nEIID) {
-    DEVLOG_DEBUG("[BACnetReadPropertyConfigFB] init event\n");
-    
-    // todo error message if init() return -1
     const char* const error = init();
-  
     if(error){
       QO() = false;
       STATUS() = error;
     }
-
+    // initialization done, continue
     if(BACnetAdapterOut().getPeer() == 0) {
-      // backpropagate inito
-      // BACnetAdapterIn().QO() = QO(); // TODO is QO() needed? -NO!
+      // backpropagate inito if last fb in the chain
       sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
     } else {
-      // forward init
-      // BACnetAdapterOut().MasterId() = BACnetAdapterIn().MasterId();
-      // BACnetAdapterOut().Index() = (TForteUInt16) (BACnetAdapterIn().Index() + 1);
-      // BACnetAdapterOut().QI() = BACnetAdapterIn().QI();
+      // forward init evenet
       sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, BACnetAdapter::scm_nEventINITID);
     }
 
   } else if(BACnetAdapterOut().INITO() == pa_nEIID) {
      // backpropagate inito
-      // BACnetAdapterIn().QO() = BACnetAdapterOut().QO() && QO();
       sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
   } else if(cg_nExternalEventID == pa_nEIID){
-    switch(mNotificationType){
-      case e_Success:
+    // external event, client controller notifies about some event
+    switch(m_enNotificationType){
+      case Success:
         QO() = true;
-        STATUS() = scmInitOK;
+        STATUS() = scm_sInitOK;
         break;
-      case e_AddrFetchFailed:
+      case AddrFetchFailed:
         QO() = false;
-        STATUS() = scmAddrFetchFailed;
+        STATUS() = scm_sAddrFetchFailed;
         break;
-      case e_COVSubscriptionFailed:
+      case COVSubscriptionFailed:
         QO() = false;
-        STATUS() = scmCOVSubscriptionFailed;
+        STATUS() = scm_sCOVSubscriptionFailed;
         break;
       default:
         break;
@@ -106,30 +58,56 @@ void CBacnetServiceConfigFB::executeEvent(int pa_nEIID){
 
 
 const char *CBacnetServiceConfigFB::init() {
+  // set configuration struct
   if(!setConfig())
-    return scmFBInitFailed;
-
+    return scm_sFBInitFailed;
+  // initialize new handle
   CBacnetClientController *clientController = static_cast<CBacnetClientController *>(CBacnetClientConfigFB::getClientConfigFB()->getDeviceController());
-
-  if(!initHandle(clientController)) // TODO check overriden initHandle functions, some code can be used frome here :) ++ REDUCES "friends"
-    return scmHandleInitFailed;
-
+  if(!initHandle(clientController))
+    return scm_sHandleInitFailed;
+  // set executor for external events
   setEventChainExecutor(m_poInvokingExecEnv);
-  
   return 0;
 }
 
-CIEC_ANY::EDataTypeID CBacnetServiceConfigFB::getIECDataType(BACNET_OBJECT_TYPE paObjectType) {
+CIEC_ANY::EDataTypeID CBacnetServiceConfigFB::objectPropertyAndTypeToIECDataType(BACNET_OBJECT_TYPE paBacnetObjectType, BACNET_PROPERTY_ID paBacnetObjectProperty) {
 
-  if(paObjectType == OBJECT_ANALOG_OUTPUT || 
-     paObjectType == OBJECT_ANALOG_INPUT ||
-     paObjectType ==  OBJECT_ANALOG_VALUE) {
+  if((OBJECT_ANALOG_OUTPUT == paBacnetObjectType || 
+     OBJECT_ANALOG_INPUT == paBacnetObjectType ||
+     OBJECT_ANALOG_VALUE ==  paBacnetObjectType) 
+     && PROP_PRESENT_VALUE == paBacnetObjectProperty) {
         return CIEC_ANY::e_DWORD;
-  } else if (paObjectType == OBJECT_BINARY_OUTPUT || 
-             paObjectType ==  OBJECT_BINARY_INPUT ||
-             paObjectType ==  OBJECT_BINARY_VALUE) { 
+  } else if ((OBJECT_BINARY_OUTPUT == paBacnetObjectType || 
+             OBJECT_BINARY_INPUT ==  paBacnetObjectType ||
+             OBJECT_BINARY_VALUE ==  paBacnetObjectType) &&
+             PROP_PRESENT_VALUE == paBacnetObjectProperty) { 
         return CIEC_ANY::e_BOOL;
   } 
-
   return CIEC_ANY::e_Max;
+}
+
+BACNET_OBJECT_TYPE CBacnetServiceConfigFB::stringToBacnetObjectType(CIEC_WSTRING paObjectType) {
+  if("ANALOG_OUTPUT" == paObjectType) {
+    return OBJECT_ANALOG_OUTPUT;
+  } else if ("ANALOG_INPUT" == paObjectType) {
+    return OBJECT_ANALOG_INPUT;
+  } else if ("ANALOG_VALUE" == paObjectType) {
+    return OBJECT_ANALOG_VALUE;
+  } else if ("BINARY_OUTPUT" == paObjectType) {
+    return OBJECT_BINARY_OUTPUT;
+  } else if ("BINARY_INPUT" == paObjectType) {
+    return OBJECT_BINARY_INPUT;
+  } else if ("BINARY_VALUE" == paObjectType) {
+    return OBJECT_BINARY_VALUE;
+  } else {
+    return MAX_BACNET_OBJECT_TYPE;
+  }
+}
+
+BACNET_PROPERTY_ID CBacnetServiceConfigFB::stringToBacnetObjectProperty(CIEC_WSTRING paObjectProperty) {
+  if("PRESENT_VALUE" == paObjectProperty){
+    return PROP_PRESENT_VALUE;
+  }  else {
+    return MAX_BACNET_PROPERTY_ID;
+  }
 }

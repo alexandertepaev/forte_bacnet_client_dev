@@ -1,23 +1,31 @@
-/*************************************************************************
- *** FORTE Library Element
- ***
- *** This file was generated using the 4DIAC FORTE Export Filter V1.0.x!
- ***
- *** Name: BACnetSubscribeUnconfirmedCOV
- *** Description: Service Interface Function Block Type
- *** Version: 
- ***     1.0: 2020-01-18/root -  - 
- *************************************************************************/
+/*******************************************************************************
+ * Copyright (c) 2017 - 2020 fortiss GmbH
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Alexander Tepaev - initial implementation and documentation
+ *******************************************************************************/
 
-#include "BACnetSubscribeUnconfirmedCOV.h"
+
+#include "bacnet_subucov_service_config_fb.h"
+#ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
+#include "bacnet_subucov_service_config_fb_gen.cpp"
+#endif
 #include "bacnet_client_controller.h"
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
-#include "BACnetSubscribeUnconfirmedCOV_gen.cpp"
+#include "bacnet_subucov_service_config_fb.h"
+#ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
+#include "bacnet_subucov_service_config_fb_gen.cpp"
+#endif
 #endif
 
 DEFINE_FIRMWARE_FB(CBacnetSubscribeUnconfirmedCOVConfigFB, g_nStringIdBACnetSubscribeUnconfirmedCOV)
 CBacnetSubscribeUnconfirmedCOVConfigFB::CBacnetSubscribeUnconfirmedCOVConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
-CBacnetServiceConfigFB(e_UnconfirmedCOVSub, pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData), mSubscriptionInvokeId(0), mSubscriptionAcknowledged(false) {};
+CBacnetServiceConfigFB(pa_poSrcRes, &scm_stFBInterfaceSpec, pa_nInstanceNameId, m_anFBConnData, m_anFBVarsData) {};
 
 CBacnetSubscribeUnconfirmedCOVConfigFB::~CBacnetSubscribeUnconfirmedCOVConfigFB(){};
 
@@ -45,26 +53,21 @@ const SFBInterfaceSpec CBacnetSubscribeUnconfirmedCOVConfigFB::scm_stFBInterface
 
 
 bool CBacnetSubscribeUnconfirmedCOVConfigFB::setConfig() {
-  BACNET_OBJECT_TYPE objType = getObjectType(ObjectType());
+  BACNET_OBJECT_TYPE objType = stringToBacnetObjectType(ObjectType()); // set to MAX_BACNET_OBJECT_TYPE if not supported
 
   if(objType == MAX_BACNET_OBJECT_TYPE || 
       DeviceID() > BACNET_MAX_INSTANCE || 
       ObjectID() > BACNET_MAX_INSTANCE)
       return false;
   
-  m_stServiceConfig = new ServiceConfig(DeviceID(), objType, ObjectID());
+  m_stServiceConfig = new SServiceConfig(DeviceID(), objType, ObjectID());
   return true;
 }
 
 bool CBacnetSubscribeUnconfirmedCOVConfigFB::initHandle(CBacnetClientController *paController) {
-   CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, SERVICE_CONFIRMED_SUBSCRIBE_COV, getIECDataType(m_stServiceConfig->mObjectType), this);
-  // CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, BACNET_CONFIRMED_SERVICE::SERVICE_CONFIRMED_SUBSCRIBE_COV, this);
-
+  // HandleDescriptor(observer name string, direction, service type, IEC datatype of the communicated data, pointer to this config fb)
+  CBacnetClientController::HandleDescriptor *desc = new CBacnetClientController::HandleDescriptor(ObserverName(), forte::core::io::IOMapper::In, SERVICE_CONFIRMED_SUBSCRIBE_COV, objectPropertyAndTypeToIECDataType(stringToBacnetObjectType(ObjectType()), PROP_PRESENT_VALUE), this);
   paController->addHandle(desc);
-
-  if(mServiceHandle == 0)  // TODO -- NOT NEEDED, DO EVERETHING THROUGH HANDLES!!!
-    return false;
-
   return true;
 }
 

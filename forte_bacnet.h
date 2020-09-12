@@ -21,6 +21,7 @@
 #define SIMPLE_COMPLEX_ACK_INVOKE_ID_OFFSET 1
 #define COV_INFINITE_LIFETIME 0
 
+#define BACNET_WRITEPROP_LOWEST_PRIO 16
 
 /* core files */
 #include "version.h"
