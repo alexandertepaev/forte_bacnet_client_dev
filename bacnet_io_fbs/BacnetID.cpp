@@ -9,12 +9,15 @@
  * Contributors:
  *   Gerd Kainz - initial API and implementation and/or initial documentation
  *   Jose Cabral - Modification to double
+ *   Alexander Tepaev - Adopted for the BACnet client integration
  *************************************************************************/
 
 #include "BacnetID.h"
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "BacnetID_gen.cpp"
 #endif
+
+#include "../bacnet_service_handle.h"
 
 DEFINE_FIRMWARE_FB(FORTE_BacnetID, g_nStringIdBacnetID)
 
@@ -46,8 +49,9 @@ void FORTE_BacnetID::executeEvent(int pa_nEIID){
   QO() = QI();
   switch(pa_nEIID){
     case cg_nExternalEventID:
-      //sendOutputEvent(scm_nEventINDID);
-      QO() = CProcessInterface::readDWord();
+      static_cast<CBacnetServiceHandle *>(mHandle)->readResponse(&IN_D());
+      //TODO: what if service execution has failed?
+      QO() = true;
       sendOutputEvent(scm_nEventCNFID);
       break;
     case scm_nEventINITID:
@@ -60,11 +64,9 @@ void FORTE_BacnetID::executeEvent(int pa_nEIID){
       sendOutputEvent(scm_nEventINITOID);
       break;
     case scm_nEventREQID:
-      // if(true == QI()){
-      //   QO() = CProcessInterface::readDWord();
-      // }
-      // sendOutputEvent(scm_nEventCNFID);
-      CProcessInterface::readDWord();
+      if(true == QI()){
+        static_cast<CBacnetServiceHandle *>(mHandle)->sendRequest(NULL);
+      }
       break;
   }
 }

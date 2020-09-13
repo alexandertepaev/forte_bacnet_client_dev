@@ -1,3 +1,15 @@
+/*******************************************************************************
+ * Copyright (c) 2017 - 2020 fortiss GmbH
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Alexander Tepaev - initial implementation and documentation
+ *******************************************************************************/
+
 #ifndef _BACNET_UNCONFIRMED_COV_HANDLE_H_
 #define _BACNET_UNCONFIRMED_COV_HANDLE_H_
 
@@ -8,36 +20,71 @@
 
 class CBacnetServiceHandle;
 
+/*! @brief Concrete BACnet service handle class, representing unconfirmedCOVNotifiaction service handle
+ *
+ * Together with BACnet client controller (CBacnetClientController), CBacnetUnconfirmedCOVHandle is responsible for subscribing to COV notifications (see controller's subscribeToCOVNotifications)
+ * and providing the notification data (only value of the present value property atm) to the corresponding IOObserver. 
+ * It is mapped to exactly one instance of the IOObserver class by the IOMapper singleton.
+ * IOObservers are the BACnet IO function blocks (see ./bacnet_io_fbs folder), which represent IO function blocks, with help of which, a BACnet clien IEC 61499 application reads and writes data.
+ * BACnet IO FBs make use of CBacnetServiceHandle's sendRequest and readResponse methods. 
+ */
 class CBacnetUnconfirmedCOVHandle : public CBacnetServiceHandle
 {
 public:
-  
-  friend class CBacnetClientController;
-  
   CBacnetUnconfirmedCOVHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB);
   ~CBacnetUnconfirmedCOVHandle();
 
-  virtual void get(CIEC_ANY &);
-  
-  int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src) { };
-
-  void decodeServiceResp(uint8_t *pdu, const uint32_t &len) { };
-
-  // void notificationReceived(CIEC_ANY paValue);
-  void notificationReceived(BACNET_PROPERTY_VALUE paPropertyValue);
-
-  void subscriptionAcknowledged();
-protected:
-  virtual void set(const CIEC_ANY &){};
-private:
+  //! Struct containing COV subscription data.
+  // In particular, it tells if the subsscription is acknowledged (bAcknowledgedFlag)
+  // And if so, what was the invoke if of the subscrbe service request
+  // Used by client controller in subscribeToCOVNotifications
   struct SubscriptionData {
     bool bAcknowledgedFlag;
     TForteUInt8 nSubscriptionInvokeID;
-
-    // SubscriptionData() : bAcknowledgedFlag(false), nSubscriptionInvokeID(0) { }
   };
-
   SubscriptionData m_stSubscriptionData = { };
+
+  //! Needed by the CBacnetServiceHandle, not used in CBacnetUnconfirmedCOVHandle
+  int encodeServiceReq(TForteUInt8 *paBuffer, const TForteUInt8 &paInvokeID, BACNET_ADDRESS *paDestAddr, BACNET_ADDRESS *paSrcAddr) { };
+  void decodeServiceResp(TForteUInt8 *paBuffer, const TForteUInt16 &paLen) { };
+
+  /*! @brief Signals to handle, that a COV notification has been received
+   *  
+   * This method is called by the client controller upon receiving a COV notification.
+   * Sets handle's mValue member to the value received in the notification.
+   * 
+   * @param paPropertyValue Structure, containing notification data (see libbacnet's BACNET_PROPERTY_VALUE struct)
+   */
+  void notificationReceived(BACNET_PROPERTY_VALUE paPropertyValue); 
+
+  /*! @brief Signals to handle, that a COV subscription has been acknowledged
+   *  
+   * This method is called by the client controller upon receiving a COV subscription acknowledge.
+   * Changes handle's state to AwaitingResponse
+   * 
+   * @param paPropertyValue Structure, containing notification data (see libbacnet's BACNET_PROPERTY_VALUE struct)
+   */
+  void subscriptionAcknowledged();
+protected:
+
+private:
+
+  /*! @brief Method called by the BACnet IO FB when requesting a service
+   *  
+   * Not used in case of CBacnetUnconfirmedCOVHandle.
+   */
+  void sendRequest(CIEC_ANY *paData) { };
+
+  /*! @brief Method called by the BACnet IO FB when it wants to read the data from the UCOV notification
+   *
+   * This method is used by the BACnet IO FBs when reading UCOV notification data.
+   * Used for getting the data (value of the mValue), and setting the specific output datapoint.
+   * 
+   * @param paData Pointer to the output port of IO FB for putting out the cov data; there is always cov data, thus always not NULL
+   */
+  void readResponse(CIEC_ANY *paData);
+
+  
 
 };
 

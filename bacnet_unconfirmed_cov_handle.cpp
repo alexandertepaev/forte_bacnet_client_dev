@@ -1,51 +1,52 @@
+/*******************************************************************************
+ * Copyright (c) 2017 - 2020 fortiss GmbH
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Alexander Tepaev - initial implementation and documentation
+ *******************************************************************************/
+
 #include "bacnet_unconfirmed_cov_handle.h"
 
 CBacnetUnconfirmedCOVHandle::CBacnetUnconfirmedCOVHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution, paServiceConfigFB)
 {
 
+  m_enHandleType = UnconfirmedCOVServiceHandle;
+  
   DEVLOG_DEBUG("[CBacnetUnconfirmedCOVHandle] CBacnetUnconfirmedCOVHandle(): Initializing UnconfirmedCOV Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d\n", paServiceConfigFB->m_stServiceConfig->deviceID, paServiceConfigFB->m_stServiceConfig->objectType, paServiceConfigFB->m_stServiceConfig->objectID);
-
-  m_eHandleType = e_UnconfirmedCOVServiceHandle;
-  //TODO: check if we know the address of the device. (controller->checkAddr(...)) If we don't know it, construct WHO-IS pdu and send it.
 }
 
 CBacnetUnconfirmedCOVHandle::~CBacnetUnconfirmedCOVHandle()
 {
 }
 
-
-void CBacnetUnconfirmedCOVHandle::get(CIEC_ANY &paValue) {
-  if (m_eHandleState == e_AwaitingResponse) {
-    DEVLOG_DEBUG("[CBacnetUnconfirmedCOVHandle] get()\n");
-    if(mType == CIEC_ANY::e_DWORD) {
-      // static_cast<CIEC_DWORD&>(paValue) = *static_cast<CIEC_DWORD *>(mValue);
-      static_cast<CIEC_REAL&>(paValue) = *static_cast<CIEC_REAL *>(mValue);
-    } else if (mType == CIEC_ANY::e_BOOL) {
-      static_cast<CIEC_BOOL&>(paValue) = *static_cast<CIEC_BOOL *>(mValue);
-    }
-  }
-}
-
   
 void CBacnetUnconfirmedCOVHandle::notificationReceived(BACNET_PROPERTY_VALUE paPropertyValue) {
-  DEVLOG_DEBUG("Hello from handler! Notification received\n");
   if(paPropertyValue.value.tag == BACNET_APPLICATION_TAG_REAL) {
-    // mValue->setValue(static_cast<CIEC_DWORD>(paPropertyValue.value.type.Real));
+    DEVLOG_DEBUG("[CBacnetUnconfirmedCOVHandle] notificationReceived(): Notification received, PresentValue=%f\n", paPropertyValue.value.type.Real);
     mValue->setValue(static_cast<CIEC_REAL>(paPropertyValue.value.type.Real));
   } else if(paPropertyValue.value.tag == BACNET_APPLICATION_TAG_ENUMERATED){
+    DEVLOG_DEBUG("[CBacnetUnconfirmedCOVHandle] notificationReceived(): Notification received, PresentValue=%d\n", paPropertyValue.value.type.Enumerated);
     mValue->setValue(static_cast<CIEC_BOOL>(paPropertyValue.value.type.Enumerated));
   }
   fireConfirmationEvent();
 }
 
 void CBacnetUnconfirmedCOVHandle::subscriptionAcknowledged() {
-  m_eHandleState = e_AwaitingResponse;
+  m_enHandleState = AwaitingResponse;
 }
 
-// int CBacnetUnconfirmedCOVHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src){
-  
-// }
-
-// void CBacnetUnconfirmedCOVHandle::decodeServiceResp(uint8_t *pdu, const uint32_t &len) {
-
-// }
+void CBacnetUnconfirmedCOVHandle::readResponse(CIEC_ANY *paData) {
+  if(AwaitingResponse == m_enHandleState) {
+    if(mType == CIEC_ANY::e_DWORD) {
+      static_cast<CIEC_REAL &>(*paData) = *static_cast<CIEC_REAL *>(mValue);
+    } else if (mType == CIEC_ANY::e_BOOL) {
+      static_cast<CIEC_BOOL &>(*paData) = *static_cast<CIEC_BOOL *>(mValue);
+    }
+    // no need to change the handle's state, it always stays in the 'awaiting response'
+  }
+}

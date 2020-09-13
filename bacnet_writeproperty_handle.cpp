@@ -1,13 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2017 - 2020 fortiss GmbH
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Alexander Tepaev - initial implementation and documentation
+ *******************************************************************************/
 #include "bacnet_writeproperty_handle.h"
 #include "bacnet_writeproperty_service_config_fb.h"
 #include "bacnet_client_controller.h"
 
 CBacnetWritePropertyHandle::CBacnetWritePropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB) : CBacnetServiceHandle(controller, direction, type, paDeviceExecution, paServiceConfigFB)
 {
+  m_enHandleType = WritePropertyServiceHandle;
 
-   DEVLOG_DEBUG("[CBacnetWritePropertyHandle] CBacnetWritePropertyHandle(): Initializing WriteProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, Priority=%d\n", paServiceConfigFB->m_stServiceConfig->deviceID, paServiceConfigFB->m_stServiceConfig->objectType, paServiceConfigFB->m_stServiceConfig->objectID, static_cast<CBacnetWritePropertyConfigFB::SServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->objectProperty, static_cast<CBacnetWritePropertyConfigFB::SServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->arrayIndex, static_cast<CBacnetWritePropertyConfigFB::SServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->priority);
-
-   m_eHandleType = e_WritePropertyServiceHandle;
+  DEVLOG_DEBUG("[CBacnetWritePropertyHandle] CBacnetWritePropertyHandle(): Initializing WriteProperty Handle with params: DeviceId=%d, ObjectType=%d, ObjectId=%d ObjectProperty=%d ArrayIndex=%d, Priority=%d\n", paServiceConfigFB->m_stServiceConfig->deviceID, paServiceConfigFB->m_stServiceConfig->objectType, paServiceConfigFB->m_stServiceConfig->objectID, static_cast<CBacnetWritePropertyConfigFB::SServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->objectProperty, static_cast<CBacnetWritePropertyConfigFB::SServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->arrayIndex, static_cast<CBacnetWritePropertyConfigFB::SServiceConfig *>(paServiceConfigFB->m_stServiceConfig)->priority);
 
 }
 
@@ -15,31 +25,9 @@ CBacnetWritePropertyHandle::~CBacnetWritePropertyHandle()
 {
 }
 
-void CBacnetWritePropertyHandle::set(const CIEC_ANY &paValue) {
-  if(m_eHandleState == e_Idle) {
-    mValue->setValue(paValue);
-    CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
-    controller->pushToRingBuffer(this);
-    m_eHandleState = e_AwaitingResponse;
-  } else if(m_eHandleState == e_AwaitingResponse) {
-    m_eHandleState = e_Idle;
-  }
-
-}
-
 int CBacnetWritePropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src){
-  // TODO: create a table of object properties and application tags and corresponding forte/cpp types
-  // TODO: write choice function
-
-  /* 
-    encode npdu data
-    fill wp_data variable + encode application data 
-    encode apdu
-    return
-  */
-
   // encode npdu data
-  int pdu_len = 4;
+  int pdu_len = BVLC_HEADER_LEN;
   BACNET_NPDU_DATA npdu_data;
   npdu_encode_npdu_data(&npdu_data, true, MESSAGE_PRIORITY_NORMAL);
   pdu_len += npdu_encode_pdu(&pdu[pdu_len], dest, src, &npdu_data);
@@ -74,18 +62,32 @@ int CBacnetWritePropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &in
   
   data.application_data_len = bacapp_encode_data(data.application_data, &application_data);
   
-
   pdu_len += wp_encode_apdu(&pdu[pdu_len], invoke_id, &data);
 
-  pdu[0] = BVLL_TYPE_BACNET_IP;
-  pdu[1] = BVLC_ORIGINAL_UNICAST_NPDU;
-  encode_unsigned16(&pdu[2], pdu_len);
+  pdu[BVLC_TYPE_BYTE] = BVLL_TYPE_BACNET_IP;
+  pdu[BVLC_FUNCTION_BYTE] = BVLC_ORIGINAL_UNICAST_NPDU;
+  encode_unsigned16(&pdu[BVLC_LEN_BYTE], pdu_len);
 
   return pdu_len;
   
 }
 
-void CBacnetWritePropertyHandle::decodeServiceResp(uint8_t *pdu, const uint32_t &len) {
+void CBacnetWritePropertyHandle::decodeServiceResp(uint8_t *pdu, const TForteUInt16 &len) {
   DEVLOG_DEBUG("[CBacnetWritePropertyHandle] decodeServiceResp(): Received WriteProperty Acknowledge!\n");
   fireConfirmationEvent();
+}
+
+void CBacnetWritePropertyHandle::sendRequest(CIEC_ANY *paData) {
+  if(m_enHandleState == Idle) {
+    mValue->setValue(*paData);
+    CBacnetClientController *controller = static_cast<CBacnetClientController *>(mController);
+    controller->pushToRingBuffer(this);
+    m_enHandleState = AwaitingResponse;
+  }
+}
+
+void CBacnetWritePropertyHandle::readResponse(CIEC_ANY *paData) {
+  // do nothing, ack received
+  if(AwaitingResponse == m_enHandleState)
+    m_enHandleState = Idle;
 }

@@ -15,24 +15,61 @@
 
 #include "bacnet_service_handle.h"
 
-
+/*! @brief Concrete BACnet service handle class, representing WriteProperty service handle
+ *
+ * Together with BACnet client controller (CBacnetClientController), CBacnetWritePropertyHandle encodes a WriteProperty service request (see encodeServiceReq method)
+ * and decodes the application part of the received response (see decodeServiceResp method).
+ * It is mapped to exactly one instance of the IOObserver class by the IOMapper singleton.
+ * IOObservers are the BACnet IO function blocks (see ./bacnet_io_fbs folder), which represent IO function blocks, with help of which, a BACnet clien IEC 61499 application reads and writes data.
+ * BACnet IO FBs make use of CBacnetServiceHandle's sendRequest and readResponse methods. 
+ */
 class CBacnetWritePropertyHandle : public CBacnetServiceHandle
 {
-private:
-  /* data */
 public:
   CBacnetWritePropertyHandle(forte::core::io::IODeviceController *controller, forte::core::io::IOMapper::Direction direction, CIEC_ANY::EDataTypeID type, CDeviceExecution& paDeviceExecution, CBacnetServiceConfigFB *paServiceConfigFB);
   ~CBacnetWritePropertyHandle();
 
-  virtual void set(const CIEC_ANY &);
+  /*! @brief Virtual method for encoding a writeproperty service request
+  *
+  * This method is used for encoding a writeproperty service request into the provided buffer
+  * 
+  * @param paBuffer Pointer to a buffer, into which the service request is to be encoded
+  * @param paInvokeID Integer, indicating the invoke id of the encoded service request
+  * @param paDestAddr Request destination address
+  * @param paSrcAddr Request source address
+  * @return Integer, indicating byte length of the encoded service request
+  */
+  int encodeServiceReq(TForteUInt8 *paBuffer, const TForteUInt8 &paInvokeID, BACNET_ADDRESS *paDestAddr, BACNET_ADDRESS *paSrcAddr);
   
-  int encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src);
-
-  void decodeServiceResp(uint8_t *pdu, const uint32_t &len);
+  /*! @brief Method for decoding a writeproperty service response
+   *
+   * This method is used for firing IO FB's external event, indicating the reception of a response
+   * 
+   * @param paBuffer Pointer to a buffer holding service response
+   * @param paLen Integer, indicating byte length of the response
+   */
+  void decodeServiceResp(TForteUInt8 *paBuffer, const TForteUInt16 &paLen);
 
 protected:
-  virtual void get(CIEC_ANY &){};
-  
+  /*! @brief Method called by the BACnet IO FB when requesting a writeproperty service
+   *
+   * This method is used by the BACnet IO FBs when requesting BACnet writeproperty  service.
+   * Used to tell the client controller, that there is a request to be sent (handle gets pushed into the controller's handles ring buffer).
+   * Changes handle's state to AwaitingResponse.
+   * 
+   * @param paData Pointer to the input port of IO FB, which holds the request data; Data is needed for WriteProperty request, thus always not NULL
+   */
+  void sendRequest(CIEC_ANY *paData);
+
+  /*! @brief Method called by the BACnet IO FB when it wants to read the writeproperty service response
+   *
+   * This method is used by the BACnet IO FBs to change handle's state to Idle, 
+   * signaling it that the writepoperty ack is handled (cnf+ + qo outputs updated)
+   * 
+   * @param paData Pointer to the output port of IO FB for putting out the response; there is no writeproperty response data, thus always NULL
+   */
+  void readResponse(CIEC_ANY *paData);
+
 };
 
 #endif

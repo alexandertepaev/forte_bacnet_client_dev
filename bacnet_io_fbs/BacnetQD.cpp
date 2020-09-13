@@ -17,6 +17,8 @@
 #include "BacnetQD_gen.cpp"
 #endif
 
+#include "../bacnet_service_handle.h"
+
 DEFINE_FIRMWARE_FB(FORTE_BacnetQD, g_nStringIdBacnetQD)
 
 const CStringDictionary::TStringId FORTE_BacnetQD::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdPARAMS, g_nStringIdOUT};
@@ -47,8 +49,8 @@ void FORTE_BacnetQD::executeEvent(int pa_nEIID){
   QO() = QI();
   switch(pa_nEIID){
     case cg_nExternalEventID:
-      
-      QO() = CProcessInterface::writeDWord();
+      static_cast<CBacnetServiceHandle *>(mHandle)->readResponse(NULL);
+      QO() = true;
       sendOutputEvent(scm_nEventCNFID);
       break;
     case scm_nEventINITID:
@@ -61,11 +63,9 @@ void FORTE_BacnetQD::executeEvent(int pa_nEIID){
       sendOutputEvent(scm_nEventINITOID);
       break;
     case scm_nEventREQID:
-      // if(true == QI()){
-      //   QO() = CProcessInterface::writeDWord();
-      // }
-      // sendOutputEvent(scm_nEventCNFID);
-      CProcessInterface::writeDWord();
+      if(true == QI()){
+        static_cast<CBacnetServiceHandle *>(mHandle)->sendRequest(&OUT_D());
+      }
       break;
   }
 }

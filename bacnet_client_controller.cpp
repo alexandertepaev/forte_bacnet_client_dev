@@ -321,8 +321,8 @@ void CBacnetClientController::handleIAm(const TForteUInt32 &paDeviceID, const st
 void CBacnetClientController::subscribeToCOVNotifications() {
   THandlesList::Iterator itEnd = mHandles->end();
     for(THandlesList::Iterator it = mHandles->begin(); it != itEnd; ++it){
-      if((*it)->m_eHandleType == CBacnetServiceHandle::e_UnconfirmedCOVServiceHandle){
-        // if the handle is of type e_UnconfirmedCOVServiceHandle, send a subscription service request
+      if((*it)->m_enHandleType == CBacnetServiceHandle::UnconfirmedCOVServiceHandle ){
+        // if the handle is of type UnconfirmedCOVServiceHandle , send a subscription service request
         CBacnetUnconfirmedCOVHandle *covHandle = static_cast<CBacnetUnconfirmedCOVHandle *>(*it);
         sendUnconfirmedCOVSubscribe(covHandle);
         // get current time
@@ -391,7 +391,7 @@ void CBacnetClientController::handleCOVSubscriptionAck(CBacnetUnconfirmedCOVHand
   TForteUInt8 invokeID = mReceiveBuffer[paAPDUOffset+SIMPLE_ACK_INVOKE_ID_OFFSET];
   if(paHandle->m_stSubscriptionData.nSubscriptionInvokeID == invokeID){
     paHandle->m_stSubscriptionData.bAcknowledgedFlag = true;
-    paHandle->m_eHandleState = CBacnetServiceHandle::e_AwaitingResponse; // change handle's state
+    paHandle->m_enHandleState = CBacnetServiceHandle::AwaitingResponse; // change handle's state
     DEVLOG_DEBUG("[CBacnetClientController] handleCOVSubscriptionAck(): subscription acknowledged\n");
   }
 }
@@ -406,7 +406,7 @@ void CBacnetClientController::notifyConfigFBs() {
       continue;
     }
     // cov subscription acknowledged check
-    if((*it)->m_eHandleType == CBacnetServiceHandle::e_UnconfirmedCOVServiceHandle){
+    if((*it)->m_enHandleType == CBacnetServiceHandle::UnconfirmedCOVServiceHandle ){
       CBacnetUnconfirmedCOVHandle *covHandle = static_cast<CBacnetUnconfirmedCOVHandle *>(*it);
       if(!covHandle->m_stSubscriptionData.bAcknowledgedFlag){
         // cov subscription wasn't acknowledged -> notify about subscription failure

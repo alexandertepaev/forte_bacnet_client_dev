@@ -8,11 +8,14 @@
  *
  * Contributors:
  *   Alois Zoitl, Waldemar Eisenmenger, Monika Wenger - initial API and implementation and/or initial documentation
+ *   Alexander Tepaev - Adopted for the BACnet client integration
  *******************************************************************************/
 #include "BacnetIX.h"
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "BacnetIX_gen.cpp"
 #endif
+
+#include "../bacnet_service_handle.h"
 
 DEFINE_FIRMWARE_FB(FORTE_BacnetIX, g_nStringIdBacnetIX)
 
@@ -44,8 +47,9 @@ void FORTE_BacnetIX::executeEvent(int pa_nEIID){
   QO() = QI();
   switch(pa_nEIID){
     case cg_nExternalEventID:
-      //sendOutputEvent(scm_nEventINDID);
-      QO() = CProcessInterface::readPin();
+      static_cast<CBacnetServiceHandle *>(mHandle)->readResponse(&IN_X());
+      //TODO: what if service execution has failed?
+      QO() = true;
       sendOutputEvent(scm_nEventCNFID);
       break;
     case scm_nEventINITID:
@@ -58,11 +62,9 @@ void FORTE_BacnetIX::executeEvent(int pa_nEIID){
       sendOutputEvent(scm_nEventINITOID);
       break;
     case scm_nEventREQID:
-      // if(true == QI()){
-      //   QO() = CProcessInterface::readPin();
-      // }
-      // sendOutputEvent(scm_nEventCNFID);
-      CProcessInterface::readPin();
+      if(true == QI()){
+        static_cast<CBacnetServiceHandle *>(mHandle)->sendRequest(NULL);
+      }
       break;
   }
 }

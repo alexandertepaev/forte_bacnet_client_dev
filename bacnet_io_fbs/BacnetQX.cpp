@@ -8,11 +8,14 @@
  *
  * Contributors:
  *   Alois Zoitl, Waldemar Eisenmenger - initial API and implementation and/or initial documentation
+ *   Alexander Tepaev - Adopted for the BACnet client integration
  *******************************************************************************/
 #include "BacnetQX.h"
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "BacnetQX_gen.cpp"
 #endif
+
+#include "../bacnet_service_handle.h"
 
 DEFINE_FIRMWARE_FB(FORTE_BacnetQX, g_nStringIdBacnetQX)
 
@@ -43,11 +46,11 @@ void FORTE_BacnetQX::executeEvent(int pa_nEIID){
   QO() = QI();
   switch(pa_nEIID){
     case cg_nExternalEventID:
-      
-      QO() = CProcessInterface::writePin();
+      // Read Response
+      static_cast<CBacnetServiceHandle *>(mHandle)->readResponse(NULL);
+      QO() = true;
       sendOutputEvent(scm_nEventCNFID);
       break;
-
     case scm_nEventINITID:
       if(true == QI()){
         QO() = CProcessInterface::initialise(false); //initialise as output
@@ -58,11 +61,10 @@ void FORTE_BacnetQX::executeEvent(int pa_nEIID){
       sendOutputEvent(scm_nEventINITOID);
       break;
     case scm_nEventREQID:
-      // if(true == QI()){
-      //   QO() = CProcessInterface::writePin();
-      // }
-      // sendOutputEvent(scm_nEventCNFID);
-      CProcessInterface::writePin();
+      if(true == QI()){
+        // Send request
+        static_cast<CBacnetServiceHandle *>(mHandle)->sendRequest(&OUT_X());
+      }
       break;
   }
 }
