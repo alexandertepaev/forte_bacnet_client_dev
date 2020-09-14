@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FBType Name="BACnetWriteProperty" Comment="Service Interface Function Block Type">
+	<Identification Standard="61499-2">
+	</Identification>
+	<VersionInfo Version="1.0" Author="root" Date="2019-12-30">
+	</VersionInfo>
+	<InterfaceList>
+		<EventOutputs>
+			<Event Name="IND" Type="Event" Comment="Indication from Resource">
+				<With Var="QO"/>
+				<With Var="STATUS"/>
+			</Event>
+		</EventOutputs>
+		<InputVars>
+			<VarDeclaration Name="QI" Type="BOOL" Comment="Event Input Qualifier"/>
+			<VarDeclaration Name="ObserverName" Type="WSTRING" Comment="Name of the Observer FB"/>
+			<VarDeclaration Name="DeviceID" Type="UINT" Comment="Identifier of the remote Device"/>
+			<VarDeclaration Name="ObjectType" Type="WSTRING" Comment="Object type of the target object"/>
+			<VarDeclaration Name="ObjectID" Type="UINT" Comment="Identifier of the target object"/>
+			<VarDeclaration Name="ObjectProperty" Type="WSTRING" Comment="Property to be read"/>
+			<VarDeclaration Name="Priority" Type="UINT" Comment="Priority of the write operation"/>
+			<VarDeclaration Name="ArrayIndex" Type="UINT" Comment="Index of array element in case property is an array"/>
+		</InputVars>
+		<OutputVars>
+			<VarDeclaration Name="QO" Type="BOOL" Comment="Event Output Qualifier"/>
+			<VarDeclaration Name="STATUS" Type="WSTRING" Comment="Service Status"/>
+		</OutputVars>
+		<Plugs>
+			<AdapterDeclaration Name="BACnetAdapterOut" Type="BACnetAdapter" Comment="BACnet adapter plug"/>
+		</Plugs>
+		<Sockets>
+			<AdapterDeclaration Name="BACnetAdapterIn" Type="BACnetAdapter" Comment="BACnet adapter socket"/>
+		</Sockets>
+	</InterfaceList>
+	<Service RightInterface="RESOURCE" LeftInterface="APPLICATION" Comment="Service Interface Function Block Type">
+		<ServiceSequence Name="normal_establishment" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="APPLICATION" Event="INIT+" Parameters="PARAMS"/>
+				<OutputPrimitive Interface="RESOURCE" Event="initialize" Parameters="PARAMS"/>
+				<OutputPrimitive Interface="APPLICATION" Event="INITO+"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="unsuccessful_establishment" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="APPLICATION" Event="INIT+" Parameters="PARAMS"/>
+				<OutputPrimitive Interface="RESOURCE" Event="initialize" Parameters="PARAMS"/>
+				<OutputPrimitive Interface="APPLICATION" Event="INITO-" Parameters="STATUS"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="request_confirm" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="APPLICATION" Event="REQ+" Parameters="SD"/>
+				<OutputPrimitive Interface="RESOURCE" Event="request" Parameters="SD"/>
+				<OutputPrimitive Interface="APPLICATION" Event="CNF+" Parameters="RD"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="request_inhibited" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="APPLICATION" Event="REQ-" Parameters="SD"/>
+				<OutputPrimitive Interface="APPLICATION" Event="CNF-" Parameters="STATUS"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="request_error" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="APPLICATION" Event="REQ+" Parameters="SD"/>
+				<OutputPrimitive Interface="RESOURCE" Event="request" Parameters="SD"/>
+				<OutputPrimitive Interface="APPLICATION" Event="CNF-" Parameters="STATUS"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="indication_response" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="RESOURCE" Event="indicate" Parameters="RD"/>
+				<OutputPrimitive Interface="APPLICATION" Event="IND+" Parameters="RD"/>
+			</ServiceTransaction>
+			<ServiceTransaction>
+				<InputPrimitive Interface="APPLICATION" Event="RSP" Parameters="QI,SD"/>
+				<OutputPrimitive Interface="RESOURCE" Event="response" Parameters="QI,SD"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="indication_inhibited" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="RESOURCE" Event="indicate" Parameters="RD,QI=FALSE"/>
+				<OutputPrimitive Interface="RESOURCE" Event="inhibited"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="error_indication" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="RESOURCE" Event="error" Parameters="STATUS"/>
+				<OutputPrimitive Interface="APPLICATION" Event="IND-" Parameters="STATUS"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="application_initiated_termination" Comment="">
+			<ServiceTransaction>
+				<InputPrimitive Interface="APPLICATION" Event="INIT-"/>
+				<OutputPrimitive Interface="RESOURCE" Event="terminate"/>
+				<OutputPrimitive Interface="APPLICATION" Event="INITO-" Parameters="STATUS"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+		<ServiceSequence Name="resource_initiated_termination" Comment="">
+			<ServiceTransaction>
+				<OutputPrimitive Interface="APPLICATION" Event="INITO-" Parameters="STATUS"/>
+			</ServiceTransaction>
+		</ServiceSequence>
+	</Service>
+</FBType>
