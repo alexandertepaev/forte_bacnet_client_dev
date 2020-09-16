@@ -122,17 +122,17 @@ int CBacnetClientController::sendPacket(const TForteUInt16 &len, const struct in
   return send_len;
 }
 
-int CBacnetClientController::receivePacket(const TForteUInt16 &timeout, sockaddr_in *sourceAddress) {
+int CBacnetClientController::receivePacket(const TForteUInt16 &paTimeout, sockaddr_in *paSourceAddress) {
   struct timeval selectTimeout;
   selectTimeout.tv_sec = 0;
-  selectTimeout.tv_usec = scm_nMicrosInMillis * timeout;// convert milliseconds to micrseconds
+  selectTimeout.tv_usec = scm_nMicrosInMillis * paTimeout;// convert milliseconds to micrseconds
   fd_set readFDs;
   FD_ZERO(&readFDs);
   FD_SET(mCommunicationSocket, &readFDs);
   if(select(mCommunicationSocket+1, &readFDs, NULL, NULL, &selectTimeout) > 0){
     socklen_t srcLen = sizeof(sockaddr_in);
-    int rcv_retval = recvfrom(mCommunicationSocket, mReceiveBuffer, sizeof(mReceiveBuffer), 0, (sockaddr *)sourceAddress, &srcLen);
-    if(sourceAddress != NULL && sourceAddress->sin_addr.s_addr ==  m_stConfig.stLocalAddr.s_addr && sourceAddress->sin_port == m_stConfig.nPort) { 
+    int rcv_retval = recvfrom(mCommunicationSocket, mReceiveBuffer, sizeof(mReceiveBuffer), 0, (sockaddr *)paSourceAddress, &srcLen);
+    if(paSourceAddress != NULL && paSourceAddress->sin_addr.s_addr ==  m_stConfig.stLocalAddr.s_addr && paSourceAddress->sin_port == m_stConfig.nPort) { 
       return 0; // msg from myself
     } else {
       return rcv_retval; // receive succeeded

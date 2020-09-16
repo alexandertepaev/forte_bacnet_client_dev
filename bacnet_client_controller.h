@@ -130,6 +130,7 @@ private:
    *  TODO: what if all of the invoke ids (255) are currently in use? -> bool array with 255 entries, indicating if an invoke id is in use
    */    
   TForteUInt8 m_nInvokeID;
+  
   TForteUInt8 mSendBuffer[MAX_MPDU]; //!< Buffer for outgoing packets
   TForteUInt8 mReceiveBuffer[MAX_MPDU]; //!< Buffer for incoming packets
 
@@ -196,7 +197,8 @@ private:
   /*! @brief Queries network addresses of the local network interface and sets the corresponding fields of the m_stConfig struct
    *
    *  Gets the local address and the subnet mask using the ioctl() system call, calculates the broadcast address and sets stLocalAddr and stBroadcastAddr fields of the m_stConfig struct.
-   *  Attention - name of the used network interface should be defined in the NETWORK_IFACE_NAME macro.
+   *  Attention - name of the used network interface should be provided via scm_sNetwrokIfaceName.
+   * // FIXME: error checking
    */
   void setNetworkAddresses();
 
@@ -242,11 +244,11 @@ private:
    * Performs a non-blocking receive over the mCommunicationSocket socket using select() and recvfrom() system calls.
    * Saves the received data into mReceiveBuffer buffer and stores the source address into the provided src address struct
    * 
-   * @param timeout Amount of milliseconds, during which select() checks if the socket fb is ready to receive a packet
+   * @param timeout Amount of milliseconds, during which select() checks if the socket fd is ready to receive a packet
    * @param src Address sctruct in which the source address of the received packet is saved
    * @return Number received bytes, or 0 if own packet is received (broadcast case), or -1 if nothing 
    */
-  int receivePacket(const TForteUInt16 &timeout, sockaddr_in *sourceAddress);
+  int receivePacket(const TForteUInt16 &paTimeout, sockaddr_in *paSourceAddress);
   
   /*! @brief Initializes BACnet service handles
    *
@@ -345,7 +347,7 @@ private:
    *
    * In this method IAm service request is received, decoded and handled.
    * Receiving is done by calling receivePacket() method.
-   * Decoding - by calling decodeNDPU().
+   * Decoding - by calling decodeAPDUData().
    * Handling - by calling handleIAm().
    * 
    * @param paDeviceID ID of the remote device's Device object
@@ -386,7 +388,7 @@ private:
    *
    * In this method an acknowledgment message for the previously sent COV subscription request is received and decoded.
    * Receiving is done by calling receivePacket() method.
-   * Decoding - by calling decodeNDPU().
+   * Decoding - by calling decodeAPDUData().
    * Handling - by calling handleCOVSubscriptionAck().
    * 
    * @param paHandle Handle of the COV subscription config FB

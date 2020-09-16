@@ -39,7 +39,7 @@ public:
   /*! @brief Returns client config fb instance
    * 
    * This static method is used for accessing the client configuration fb instance (see mBacnetClientConfigFB)
-   * //TODO see mBacnetClientConfigFB comment 
+   * //TODO see mBacnetClientConfigFB comment / Do we actually need the client config fb?
    * 
    */
   static CBacnetClientConfigFB* getClientConfigFB();
@@ -113,7 +113,7 @@ private:
 
   /*! @brief Handles input events 
    *
-   * This method represents the entry point of ClientConfigFB's execution.
+   * This method represents an entry point of ClientConfigFB's execution.
    * Calls IOConfigFBController's executeEvent, which results in the initialization of device controller.
    * 
    * @param pa_nEIID ID of the triggered input event
