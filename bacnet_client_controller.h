@@ -484,8 +484,38 @@ private:
    * Decoding is done by calling decodeAPDUData method.
    * Handling by calling handleAPDU method.
    * 
+   * @param paSourceAddress Reference to struct containing source address of the request
    */
-  void decodeAndHandleReceivedPacket();
+  void decodeAndHandleReceivedPacket(sockaddr_in &paSourceAddress);
+
+  /*! @brief Decodes NPDU portion of a packet and returns APDU offset and APDU length 
+   *  
+   * In this method NPDU portion of a received BACnet request/response is decoded and the provided
+   * references to APDU offset and APDU length variables are set. Called in combination with
+   * decodeAPDU() method.
+   * 
+   * @param paAPDUOffset Reference to the variable indicating the offset to the APDU portion
+   * @param paAPDULen Reference to the variable indication length of the APDU portion
+   * @return 'true' in case of a success, 'false' otherwise
+   *  
+   */
+  bool decodeNPDU(TForteUInt16 &paAPDUOffset, TForteUInt16 &paAPDULen);
+
+  /*! @brief Decodes APDU portion of a packet and returns InvokeID, ServiceChoice and ServiceRequestOffset
+   *
+   * In this method APDU portion of a received BACnet request is decoded and the provided 
+   * refererences to invokeID, serviceChoice and ServiceRequestOffset variables are set.
+   * Called in combination with decodeNPDU method (decodeNPDU must be called first).
+   * 
+   * @param paAPDUType Reference to an integer variable indicating type of the APDU (see bacnetlib's BACNET_PDU_TYPE enum in .../include/bacenum.h)
+   * @param paAPDUOffset Reference to the variable indicating the offset to the APDU portion
+   * @param paInvokeID Reference to the variable indicating invoke id of the received request
+   * @param paServiceChoice Reference to the variable indication service choice of the received packet
+   * @param paServiceRequestOffset Reference to the variable indicating the offset service request portion
+   * @return 'true' in case of a success, 'false' otherwise
+   *  
+   */
+  bool decodeAPDU(TForteUInt8 &paAPDUType, const TForteUInt16 &paAPDUOffset, TForteUInt8 &paInvokeID, TForteUInt8 &paServiceChoice, TForteUInt16 &paServiceRequestOffset);
 
   /*! @brief Deletes an entry from the list of active transactions 
    *
@@ -495,19 +525,6 @@ private:
    * @param paTransaction Transaction information struct
    */
   inline void deregisterTransaction(STransactionListEntry *paTransaction);
-
-  /*! @brief Decodes incoming service request and returns information about its application part
-   *
-   * This method performs the decoding of network and virtual link parts of the incoming BACnet packet
-   * and sets APDU offset, APDU length, APDU type and service choice variables passed as reference parameters.
-   * 
-   * @param paAPDUOffset Reference to an integer variable indicating number of bytes from the start of the packet to its APDU part
-   * @param paAPDULen Referance to an integer variable indicating length of the packet's APDU part (see bacnetlib's BACNET_CONFIRMED_SERVICE and BACNET_UNCONFIRMED_SERVICE enums in .../include/bacenum.h )
-   * @param paAPDUType Reference to an integer variable indicating type of the APDU (see bacnetlib's BACNET_PDU_TYPE enum in .../include/bacenum.h)
-   * @param paServiceChoice Reference to an integer variable indicating type of service encoded in the received packet
-   * @return 'true' if decdoding was sucessful, 'false' otherwise
-   */
-  bool decodeAPDUData(TForteUInt16 &paAPDUOffset, TForteUInt16 &paAPDULen, TForteUInt8 &paAPDUType, TForteUInt8 &paServiceChoice);
 
   /*! @brief Handles decoded APDU part of the incoming service request
    *

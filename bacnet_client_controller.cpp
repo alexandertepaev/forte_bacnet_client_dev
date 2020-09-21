@@ -307,7 +307,10 @@ void CBacnetClientController::receiveIAm(const TForteUInt32 &paDeviceID){
     TForteUInt8 APDUType = 0;
     TForteUInt16 APDUOffset = 0;
     TForteUInt16 APDULen = 0;
-    if(decodeAPDUData(APDUOffset, APDULen, APDUType, serviceChoice) && 
+    TForteUInt8 invokeID = 0;
+    TForteUInt16 serviceRequestOffset = 0;
+    if(decodeNPDU(APDUOffset, APDULen) && 
+       decodeAPDU(APDUType, APDUOffset, invokeID, serviceChoice, serviceRequestOffset)  && 
        APDUType == PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST &&
        serviceChoice == SERVICE_UNCONFIRMED_I_AM) {
       handleIAm(paDeviceID, soruceAddress, APDUOffset);
@@ -390,7 +393,10 @@ void CBacnetClientController::receiveCOVSubscriptionAck(CBacnetUnconfirmedCOVHan
     TForteUInt8 APDUType = 0;
     TForteUInt16 APDUOffset = 0;
     TForteUInt16 APDULen = 0;
-    if(decodeAPDUData(APDUOffset, APDULen, APDUType, serviceChoice) && 
+    TForteUInt8 invokeID = 0;
+    TForteUInt16 serviceRequestOffset = 0;
+    if(decodeNPDU(APDUOffset, APDULen) && 
+       decodeAPDU(APDUType, APDUOffset, invokeID, serviceChoice, serviceRequestOffset)  && 
        APDUType == PDU_TYPE_SIMPLE_ACK &&
        serviceChoice == SERVICE_CONFIRMED_SUBSCRIBE_COV) {
       handleCOVSubscriptionAck(paHandle, APDUOffset);
@@ -466,9 +472,11 @@ void CBacnetClientController::executeOperationCycle() {
       }
     }
     // try to receive an incoming packet for 100ms
-    if(receivePacket(scm_nReceivePacketSelectTimeoutMillis, NULL) > 0) {
+    sockaddr_in src;
+    if(receivePacket(scm_nReceivePacketSelectTimeoutMillis, &src) > 0) {
         // handle it in case of a success
-        decodeAndHandleReceivedPacket();
+        // decodeAndHandleReceivedPacket();
+        decodeAndHandleReceivedPacket(src);
     }
     // check deadlines of active transactions
     checkTransactionsDeadlines();
@@ -503,36 +511,21 @@ inline void CBacnetClientController::deregisterTransaction(STransactionListEntry
   mActiveTransactions->erase(paTransaction);
 }
 
-void CBacnetClientController::decodeAndHandleReceivedPacket() {
-  TForteUInt8 serviceChoice = 0; // see bacnetlib's BACNET_CONFIRMED_SERVICE and BACNET_UNCONFIRMED_SERVICE enums in .../include/bacenum.h 
-  TForteUInt8 APDUType = 0; // see bacnetlib's BACNET_PDU_TYPE enum in .../include/bacenum.h
-  TForteUInt16 ADPUOffset = 0; 
-  TForteUInt16 APDULen = 0;
-  if(decodeAPDUData(ADPUOffset, APDULen, APDUType, serviceChoice)) {
-    DEVLOG_DEBUG("[CBacnetClientController] BACnet APDU received: apdu_offset=%d, apdu_len=%d, apdu_type=%02X, service_choice=%02X\n", ADPUOffset, APDULen, APDUType, serviceChoice);
-    handleAPDU(&mReceiveBuffer[ADPUOffset], APDULen, APDUType, serviceChoice);
-  }
-}
+void CBacnetClientController::decodeAndHandleReceivedPacket(sockaddr_in &paSourceAddress) {
+    TForteUInt8 serviceChoice = 0; // see bacnetlib's BACNET_CONFIRMED_SERVICE and BACNET_UNCONFIRMED_SERVICE enums in .../include/bacenum.h 
+    TForteUInt8 APDUType = 0; // see bacnetlib's BACNET_PDU_TYPE enum in .../include/bacenum.h
+    TForteUInt16 APDUOffset = 0; 
+    TForteUInt16 APDULen = 0;
+    TForteUInt8 invokeID = 0;
+    TForteUInt16 ServiceRequestOffset = 0;
 
-void CBacnetClientController::checkTransactionsDeadlines() {
-  timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  TTransactionList::Iterator it = mActiveTransactions->begin();
-  while(it != mActiveTransactions->end()){
-    // work with a copy to avoid dangling pointer in case of an erase
-    TTransactionList::Iterator _it = it; 
-    ++it;
-    //check the deadline, notify the handle and deregister the transaction in case of a missed deadline
-    if(timespecLessThan(&((*_it)->deadline), &now)){
-      DEVLOG_DEBUG("[CBacnetClientController] checkTransactionsDeadlines(): deadline missed, invokeid=%d\n", (*_it)->invokeID);
-      (*_it)->handle->missedTransactionDeadline();
-      deregisterTransaction((*_it));
+    if(decodeNPDU(APDUOffset, APDULen) && decodeAPDU(APDUType, APDUOffset, invokeID, serviceChoice, ServiceRequestOffset)){
+      handleAPDU(&mReceiveBuffer[APDUOffset], APDULen, APDUType, serviceChoice);
     }
-  }
 }
 
 
-bool CBacnetClientController::decodeAPDUData(TForteUInt16 &paAPDUOffset, TForteUInt16 &paAPDULen, TForteUInt8 &paAPDUType, TForteUInt8 &paServiceChoice) {
+bool CBacnetClientController::decodeNPDU(TForteUInt16 &paAPDUOffset, TForteUInt16 &paAPDULen){
   if (mReceiveBuffer[BVLC_TYPE_BYTE] == BVLL_TYPE_BACNET_IP) {
     /* Bacnet/IP signature check */
     TForteUInt16 NPDULen;
@@ -551,64 +544,80 @@ bool CBacnetClientController::decodeAPDUData(TForteUInt16 &paAPDUOffset, TForteU
                 /* NOT network layer message, APDU offset is in bounds, NOT routing infromation */
                 // not network layer message -> APDU follows -> APDUOffset+=4, adds BVLC header length
                 paAPDUOffset = (TForteUInt16)(paAPDUOffset+BVLC_HEADER_LEN);
-                
                 paAPDULen = (TForteUInt16) (NPDULen-paAPDUOffset);
-                paAPDUType = (mReceiveBuffer[paAPDUOffset] & APDU_TYPE_MASK);
-                
-                if((dest.net != BACNET_BROADCAST_NETWORK) || (paAPDUType != PDU_TYPE_CONFIRMED_SERVICE_REQUEST )) {
-                  /* NOT confirmed Broadcast (TODO read section 5.4.5.1)*/
-                  switch (paAPDUType)
-                  {
-                    case PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST:
-                      // I-Am + UnconfirmedCOVNotification
-                      // APDU[0] & 0xF0 = APDU Type
-                      // APDU[1] = service choice
-                      // APDU[2..*] = application tags
-                      paServiceChoice = mReceiveBuffer[paAPDUOffset+UNCONFIRMED_REQ_SERVICE_CHOICE_OFFSET];
-                      if(paServiceChoice < MAX_BACNET_UNCONFIRMED_SERVICE)
-                        return true;
-                      break;
-
-                    case PDU_TYPE_SIMPLE_ACK:
-                      // WriteProperty + SubscribeCOV acknowledge
-                      // APDU[0] & 0xF0 = APDU Type
-                      // APDU[1] = invoke id
-                      // APDU[2] = service choice
-                      paServiceChoice = mReceiveBuffer[paAPDUOffset+SIMPLE_ACK_SERVICE_CHOICE_OFFSET];
-                      if(paServiceChoice == SERVICE_CONFIRMED_WRITE_PROPERTY ||
-                          paServiceChoice == SERVICE_CONFIRMED_SUBSCRIBE_COV)
-                        return true;
-                      break;
-
-                    case PDU_TYPE_COMPLEX_ACK:
-                      // ReadProperty acknowledge and result
-                      // APDU[0] & 0xF0 = APDU Type
-                      // APDU[0] & 0x0F = PDU flags (3d bit - segmented message, 2d bit - more segments to follow)
-                      // APDU[1] = invoke id
-                      // ADPU[2] = service choice
-                      // APDU[3..*] = context+application tags  
-                      if( !(mReceiveBuffer[paAPDUOffset] & COMPLEX_ACK_NPDU_SEGMENTED_MASK) ) {
-                        /* NOT segmented */
-                        paServiceChoice = mReceiveBuffer[paAPDUOffset+COMPLEX_ACK_SERVICE_CHOICE_OFFSET];
-                        if(paServiceChoice == SERVICE_CONFIRMED_READ_PROPERTY)
-                          return true;
-                      }
-                      break;
-
-                    default:
-                      return false;
-                      break;
-                  }
-                  
-                }
+                return true;
           }
         }
       }
     }
   }
-
-  return false;
+  return false;  
 }
+
+bool CBacnetClientController::decodeAPDU(TForteUInt8 &paAPDUType, const TForteUInt16 &paAPDUOffset, TForteUInt8 &paInvokeID, TForteUInt8 &paServiceChoice, TForteUInt16 &paServiceRequestOffset) {
+  paAPDUType = (mReceiveBuffer[paAPDUOffset] & APDU_TYPE_MASK);
+  switch (paAPDUType)
+  {
+    case PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST:
+      // I-Am + UnconfirmedCOVNotification
+      // APDU[0] & 0xF0 = APDU Type
+      // APDU[1] = service choice
+      // APDU[2..*] = application tags
+      paServiceChoice = mReceiveBuffer[paAPDUOffset+UNCONFIRMED_REQ_SERVICE_CHOICE_OFFSET];
+      paServiceRequestOffset = (TForteUInt16)(paAPDUOffset+UNCONFIRMED_REQ_APP_TAGS_OFFSET);
+      return true;
+      break;
+
+    case PDU_TYPE_SIMPLE_ACK:
+      // WriteProperty + SubscribeCOV acknowledge
+      // APDU[0] & 0xF0 = APDU Type
+      // APDU[1] = invoke id
+      // APDU[2] = service choice
+      paServiceChoice = mReceiveBuffer[paAPDUOffset+SIMPLE_ACK_SERVICE_CHOICE_OFFSET];
+      paInvokeID = mReceiveBuffer[paAPDUOffset+SIMPLE_COMPLEX_ACK_INVOKE_ID_OFFSET];
+      return true;
+      break;
+
+    case PDU_TYPE_COMPLEX_ACK:
+      // ReadProperty acknowledge and result
+      // APDU[0] & 0xF0 = APDU Type
+      // APDU[0] & 0x0F = PDU flags (3d bit - segmented message, 2d bit - more segments to follow)
+      // APDU[1] = invoke id
+      // ADPU[2] = service choice
+      // APDU[3..*] = context+application tags  
+      if( !(mReceiveBuffer[paAPDUOffset] & COMPLEX_ACK_NPDU_SEGMENTED_MASK) ) {
+        /* NOT segmented */
+        paServiceChoice = mReceiveBuffer[paAPDUOffset+COMPLEX_ACK_SERVICE_CHOICE_OFFSET];
+        paInvokeID = mReceiveBuffer[paAPDUOffset+SIMPLE_COMPLEX_ACK_INVOKE_ID_OFFSET];
+        paServiceRequestOffset = (TForteUInt16)(paAPDUOffset+COMPLEX_ACK_APP_TAGS_OFFSET);
+        return true;
+      }
+      break;
+    default:
+      return false;
+      break;
+  }
+  return false;    
+}
+
+
+void CBacnetClientController::checkTransactionsDeadlines() {
+  timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  TTransactionList::Iterator it = mActiveTransactions->begin();
+  while(it != mActiveTransactions->end()){
+    // work with a copy to avoid dangling pointer in case of an erase
+    TTransactionList::Iterator _it = it; 
+    ++it;
+    //check the deadline, notify the handle and deregister the transaction in case of a missed deadline
+    if(timespecLessThan(&((*_it)->deadline), &now)){
+      DEVLOG_DEBUG("[CBacnetClientController] checkTransactionsDeadlines(): deadline missed, invokeid=%d\n", (*_it)->invokeID);
+      (*_it)->handle->missedTransactionDeadline();
+      deregisterTransaction((*_it));
+    }
+  }
+}
+
 
 void CBacnetClientController::handleAPDU(TForteUInt8 *paAPDU, const TForteUInt16 &paAPDULen, const TForteUInt8 &paAPDUType, const TForteUInt8 &paServiceChoice) {
   switch (paAPDUType)
