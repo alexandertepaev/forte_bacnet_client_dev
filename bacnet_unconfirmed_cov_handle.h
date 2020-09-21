@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017 - 2020 fortiss GmbH
+ * Copyright (c) 2020 Alexander Tepaev github.com/alexandertepaev
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0.
@@ -7,7 +7,7 @@
  * SPDX-License-Identifier: EPL-2.0
  *
  * Contributors:
- *   Alexander Tepaev - initial implementation and documentation
+ *   Alexander Tepaev
  *******************************************************************************/
 
 #ifndef _BACNET_UNCONFIRMED_COV_HANDLE_H_
@@ -45,8 +45,8 @@ public:
   SubscriptionData m_stSubscriptionData = { };
 
   //! Needed by the CBacnetServiceHandle, not used in CBacnetUnconfirmedCOVHandle
-  int encodeServiceReq(TForteUInt8 *paBuffer, const TForteUInt8 &paInvokeID, BACNET_ADDRESS *paDestAddr, BACNET_ADDRESS *paSrcAddr) { };
-  void decodeServiceResp(TForteUInt8 *paBuffer, const TForteUInt16 &paLen) { };
+  int encodeServiceReq(TForteUInt8 *paBuffer, const TForteUInt8 &paInvokeID, BACNET_ADDRESS *paDestAddr, BACNET_ADDRESS *paSrcAddr) { std::ignore = paBuffer;  std::ignore = paInvokeID; std::ignore = paDestAddr; std::ignore = paSrcAddr; return 0; };
+  void decodeServiceResp(TForteUInt8 *paBuffer, const TForteUInt16 &paLen) { std::ignore = paBuffer;  std::ignore = paLen; };
 
   /*! @brief Signals to handle, that a COV notification has been received
    *  
@@ -73,7 +73,7 @@ private:
    *  
    * Not used in case of CBacnetUnconfirmedCOVHandle.
    */
-  void sendRequest(CIEC_ANY *paData) { };
+  void sendRequest(CIEC_ANY *paData) { std::ignore = paData; };
 
   /*! @brief Method called by the BACnet IO FB when it wants to read the data from the UCOV notification
    *

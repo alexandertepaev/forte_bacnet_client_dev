@@ -9,7 +9,7 @@
  * Contributors:
  *   Gerd Kainz - initial API and implementation and/or initial documentation
  *   Jose Cabral - Modification to double
- *   Alexander Tepaev - Adopted for the BACnet client integration
+ *   Alexander Tepaev - Adapted for the BACnet client integration
  *************************************************************************/
 
 #ifndef _BacnetQD_H_

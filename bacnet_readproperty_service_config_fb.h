@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017 - 2020 fortiss GmbH
+ * Copyright (c) 2020 Alexander Tepaev github.com/alexandertepaev
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0.
@@ -7,7 +7,7 @@
  * SPDX-License-Identifier: EPL-2.0
  *
  * Contributors:
- *   Alexander Tepaev - initial implementation and documentation
+ *   Alexander Tepaev
  *******************************************************************************/
 
 #ifndef _BACNETREADPROPERTY_H_
@@ -38,9 +38,9 @@ public:
 
   //! Overriden BACnet service request configuration struct, objectProperty and arrayIndex members added
   struct SServiceConfig : CBacnetServiceConfigFB::SServiceConfig {
-    TForteUInt32 objectProperty; // Integer, indicating target property of the accessed object
+    TForteUInt16 objectProperty; // Integer, indicating target property of the accessed object
     TForteUInt32 arrayIndex; // Integer, indicating index of the target array element in case the accessed property is an array, hardcoded atm
-      SServiceConfig(TForteUInt32 paDeviceId, BACNET_OBJECT_TYPE paObjectType, TForteUInt32 paObjectId, TForteUInt32 paObjectProperty, TForteUInt32 paArrayIndex) :
+      SServiceConfig(TForteUInt32 paDeviceId, BACNET_OBJECT_TYPE paObjectType, TForteUInt16 paObjectId, TForteUInt16 paObjectProperty, TForteUInt32 paArrayIndex) :
       CBacnetServiceConfigFB::SServiceConfig(paDeviceId, paObjectType, paObjectId), objectProperty(paObjectProperty), arrayIndex(paArrayIndex) {
       };
   };

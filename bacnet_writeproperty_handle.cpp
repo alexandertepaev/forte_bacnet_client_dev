@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017 - 2020 fortiss GmbH
+ * Copyright (c) 2020 Alexander Tepaev github.com/alexandertepaev
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0.
@@ -7,7 +7,7 @@
  * SPDX-License-Identifier: EPL-2.0
  *
  * Contributors:
- *   Alexander Tepaev - initial implementation and documentation
+ *   Alexander Tepaev
  *******************************************************************************/
 #include "bacnet_writeproperty_handle.h"
 #include "bacnet_writeproperty_service_config_fb.h"
@@ -27,10 +27,10 @@ CBacnetWritePropertyHandle::~CBacnetWritePropertyHandle()
 
 int CBacnetWritePropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &invoke_id, BACNET_ADDRESS *dest, BACNET_ADDRESS *src){
   // encode npdu data
-  int pdu_len = BVLC_HEADER_LEN;
-  BACNET_NPDU_DATA npdu_data;
-  npdu_encode_npdu_data(&npdu_data, true, MESSAGE_PRIORITY_NORMAL);
-  pdu_len += npdu_encode_pdu(&pdu[pdu_len], dest, src, &npdu_data);
+  TForteUInt16 PDULen = BVLC_HEADER_LEN;
+  BACNET_NPDU_DATA NPDUData;
+  npdu_encode_npdu_data(&NPDUData, true, MESSAGE_PRIORITY_NORMAL);
+  PDULen = (TForteUInt16) (PDULen + npdu_encode_pdu(&pdu[PDULen], dest, src, &NPDUData));
   
 
   BACNET_WRITE_PROPERTY_DATA data;
@@ -62,18 +62,20 @@ int CBacnetWritePropertyHandle::encodeServiceReq(uint8_t *pdu, const uint8_t &in
   
   data.application_data_len = bacapp_encode_data(data.application_data, &application_data);
   
-  pdu_len += wp_encode_apdu(&pdu[pdu_len], invoke_id, &data);
+  PDULen = (TForteUInt16) (PDULen + wp_encode_apdu(&pdu[PDULen], invoke_id, &data));
 
   pdu[BVLC_TYPE_BYTE] = BVLL_TYPE_BACNET_IP;
   pdu[BVLC_FUNCTION_BYTE] = BVLC_ORIGINAL_UNICAST_NPDU;
-  encode_unsigned16(&pdu[BVLC_LEN_BYTE], pdu_len);
+  encode_unsigned16(&pdu[BVLC_LEN_BYTE], PDULen);
 
-  return pdu_len;
+  return PDULen;
   
 }
 
 void CBacnetWritePropertyHandle::decodeServiceResp(uint8_t *pdu, const TForteUInt16 &len) {
   DEVLOG_DEBUG("[CBacnetWritePropertyHandle] decodeServiceResp(): Received WriteProperty Acknowledge!\n");
+  std::ignore = pdu;
+  std::ignore = len;
   fireConfirmationEvent();
 }
 
@@ -88,6 +90,7 @@ void CBacnetWritePropertyHandle::sendRequest(CIEC_ANY *paData) {
 
 void CBacnetWritePropertyHandle::readResponse(CIEC_ANY *paData) {
   // do nothing, ack received
+  std::ignore = paData;
   if(AwaitingResponse == m_enHandleState)
     m_enHandleState = Idle;
 }

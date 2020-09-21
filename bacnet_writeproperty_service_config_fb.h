@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017 - 2020 fortiss GmbH
+ * Copyright (c) 2020 Alexander Tepaev github.com/alexandertepaev
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0.
@@ -7,7 +7,7 @@
  * SPDX-License-Identifier: EPL-2.0
  *
  * Contributors:
- *   Alexander Tepaev - initial implementation and documentation
+ *   Alexander Tepaev
  *******************************************************************************/
 
 #ifndef _BACNETWRITEPROPERTY_H_
@@ -38,11 +38,11 @@ public:
 
    //! Overriden BACnet service request configuration struct, objectProperty, priority and arrayIndex members added
   struct SServiceConfig : CBacnetServiceConfigFB::SServiceConfig {
-    uint32_t objectProperty; // Integer, indicating target property of the accessed object
-    uint32_t priority; // Integer, indicating the priority of the write operation, hardcoded atm
-    uint32_t arrayIndex; // Integer, indicating index of the target array element in case the accessed property is an array, hardcoded atm
-    SServiceConfig(uint32_t paDeviceId, BACNET_OBJECT_TYPE paObjectType, uint32_t paObjectId, uint32_t paObjectProperty, uint32_t paArrayIndex, uint32_t paPriority) :
-    CBacnetServiceConfigFB::SServiceConfig(paDeviceId, paObjectType, paObjectId), objectProperty(paObjectProperty), arrayIndex(paArrayIndex), priority(paPriority) {
+    TForteUInt16 objectProperty; // Integer, indicating target property of the accessed object
+    TForteUInt8 priority; // Integer, indicating the priority of the write operation, hardcoded atm
+    TForteUInt32 arrayIndex; // Integer, indicating index of the target array element in case the accessed property is an array, hardcoded atm
+    SServiceConfig(TForteUInt32 paDeviceId, BACNET_OBJECT_TYPE paObjectType, TForteUInt16 paObjectId, TForteUInt16 paObjectProperty, TForteUInt32 paArrayIndex, TForteUInt8 paPriority) :
+    CBacnetServiceConfigFB::SServiceConfig(paDeviceId, paObjectType, paObjectId), objectProperty(paObjectProperty), priority(paPriority), arrayIndex(paArrayIndex) {
       
     };
   }

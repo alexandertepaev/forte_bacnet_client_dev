@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017 - 2020 fortiss GmbH
+ * Copyright (c) 2020 Alexander Tepaev github.com/alexandertepaev
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0.
@@ -7,7 +7,7 @@
  * SPDX-License-Identifier: EPL-2.0
  *
  * Contributors:
- *   Alexander Tepaev - initial implementation and documentation
+ *   Alexander Tepaev
  *******************************************************************************/
 
 #ifndef _BACNET_SERVICE_HANDLE_H_
@@ -131,12 +131,12 @@ private:
   //!< Methods needed for the CExternalEventHandler, not used
   void enableHandler(void) {};
   void disableHandler(void) {};
-  void setPriority(int paPriority) {};
+  void setPriority(int paPriority) { std::ignore = paPriority; };
   int getPriority(void) const { return 0; };
   size_t getIdentifier() const { return 0; };
   //!< Methods needed for the IOHandle, not used, see sendRequest / readResponse + Bacnet IO FBs
-  void get(CIEC_ANY &paValue) { };
-  void set(const CIEC_ANY &) { };
+  void get(CIEC_ANY &paValue) { std::ignore = paValue; };
+  void set(const CIEC_ANY &paValue) { std::ignore = paValue; };
 };
 
 #endif

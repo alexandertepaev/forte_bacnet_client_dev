@@ -1,3 +1,14 @@
+/*******************************************************************************
+ * Copyright (c) 2020 Alexander Tepaev github.com/alexandertepaev
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Alexander Tepaev
+ *******************************************************************************/
 #include "bacnet_client_controller.h"
 #include "bacnet_service_config_fb.h"
 #include "bacnet_service_handle.h"
@@ -7,10 +18,10 @@
 #include "bacnet_subucov_service_config_fb.h"
 
 
-CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution) : forte::core::io::IODeviceController(paDeviceExecution), mCommunicationSocket(0), m_enClientControllerState(Init), m_nInvokeID(0)
+CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution) : forte::core::io::IODeviceController(paDeviceExecution), m_enClientControllerState(Init), mCommunicationSocket(0), m_nInvokeID(0)
 {
   // Zero the configuration struct
-  memset(&(this->m_stConfig), 0, sizeof(this->m_stConfig)); 
+  m_stConfig = { };
   // Zero the handles RingBuffer
   m_stHandlesRingBuffer = { };
   // handles list
@@ -57,7 +68,7 @@ void CBacnetClientController::setNetworkAddresses() {
   strncpy(ifr.ifr_name, scm_sNetwrokIfaceName, sizeof(ifr.ifr_name));
   if(fd >= 0) {
     // local address
-    rv = ioctl(fd, SIOCGIFADDR, &ifr);
+    rv = ioctl(fd, SIOCGIFADDR, &ifr); // TODO: error checking
     IPAddress = *((struct sockaddr_in *) &ifr.ifr_addr);
     this->m_stConfig.stLocalAddr = IPAddress.sin_addr;
 
@@ -118,7 +129,7 @@ int CBacnetClientController::sendPacket(const TForteUInt16 &len, const struct in
   dest.sin_addr.s_addr = destinationAddr.s_addr;
   dest.sin_port = destinationPort;
   memset(dest.sin_zero, 0, 8);
-  int send_len = sendto(mCommunicationSocket, (char *)mSendBuffer, len, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));
+  int send_len = (int) sendto(mCommunicationSocket, (char *)mSendBuffer, len, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr));
   return send_len;
 }
 
@@ -131,7 +142,7 @@ int CBacnetClientController::receivePacket(const TForteUInt16 &paTimeout, sockad
   FD_SET(mCommunicationSocket, &readFDs);
   if(select(mCommunicationSocket+1, &readFDs, NULL, NULL, &selectTimeout) > 0){
     socklen_t srcLen = sizeof(sockaddr_in);
-    int rcv_retval = recvfrom(mCommunicationSocket, mReceiveBuffer, sizeof(mReceiveBuffer), 0, (sockaddr *)paSourceAddress, &srcLen);
+    int rcv_retval = (int) recvfrom(mCommunicationSocket, mReceiveBuffer, sizeof(mReceiveBuffer), 0, (sockaddr *)paSourceAddress, &srcLen);
     if(paSourceAddress != NULL && paSourceAddress->sin_addr.s_addr ==  m_stConfig.stLocalAddr.s_addr && paSourceAddress->sin_port == m_stConfig.nPort) { 
       return 0; // msg from myself
     } else {
@@ -227,6 +238,7 @@ void CBacnetClientController::runLoop() {
       case ConfigFBsNotification:
         notifyConfigFBs();
         m_enClientControllerState = NormalOperation;
+        break;
       case NormalOperation:
         executeOperationCycle();
         break;
@@ -259,10 +271,10 @@ void CBacnetClientController::sendWhoIs(const TForteUInt32 &paDeviceId){
   // encode npdu control data: no reply expected, normal priority
   BACNET_NPDU_DATA NPDUData;
   npdu_encode_npdu_data(&NPDUData, false, MESSAGE_PRIORITY_NORMAL);
-  int PDULen = BVLC_HEADER_LEN;
-  PDULen += npdu_encode_pdu(&mSendBuffer[PDULen], &broadcastAddr, &localAddr, &NPDUData);
+  TForteUInt16 PDULen = BVLC_HEADER_LEN;
+  PDULen = (TForteUInt16) (PDULen + npdu_encode_pdu(&mSendBuffer[PDULen], &broadcastAddr, &localAddr, &NPDUData));
   // encode apdu data
-  PDULen += whois_encode_apdu(&mSendBuffer[PDULen], paDeviceId, paDeviceId);
+  PDULen = (TForteUInt16) (PDULen + whois_encode_apdu(&mSendBuffer[PDULen], paDeviceId, paDeviceId));
   // encode virtual link data
   mSendBuffer[BVLC_TYPE_BYTE] = BVLL_TYPE_BACNET_IP;
   mSendBuffer[BVLC_FUNCTION_BYTE] = BVLC_ORIGINAL_BROADCAST_NPDU;
@@ -280,7 +292,7 @@ bool CBacnetClientController::timeoutMillis(const TForteUInt16 &paMillis, const 
   // calculate time difference
   timespecSub(&currentTime, &paStartTime, &delta);
   // convert to milliseconds
-  TForteUInt16 millisElapsed = round(delta.tv_nsec / scm_nNanosInMillis) + delta.tv_sec * scm_nMillisInS;
+  TForteUInt16 millisElapsed = (TForteUInt16) (round(delta.tv_nsec / scm_nNanosInMillis) + (TForteUInt16) (delta.tv_sec * scm_nMillisInS));
 
   return (millisElapsed > paMillis);
 }
@@ -349,8 +361,8 @@ void CBacnetClientController::sendUnconfirmedCOVSubscribe(CBacnetUnconfirmedCOVH
   BACNET_ADDRESS bacnetLocalAddr = ipToBacnetAddress(this->m_stConfig.stLocalAddr, this->m_stConfig.nPort, false);
   BACNET_NPDU_DATA NPDUData;
   npdu_encode_npdu_data(&NPDUData, true, MESSAGE_PRIORITY_NORMAL);
-  int PDULen = BVLC_HEADER_LEN;
-  PDULen += npdu_encode_pdu(&mSendBuffer[PDULen], &bacnetDestinationAddr, &bacnetLocalAddr, &NPDUData);
+  TForteUInt16 PDULen = BVLC_HEADER_LEN;
+  PDULen = (TForteUInt16)(PDULen + npdu_encode_pdu(&mSendBuffer[PDULen], &bacnetDestinationAddr, &bacnetLocalAddr, &NPDUData));
   //encode apdu: target object, target object's ID, hardcoded process identifier, unconfirmed notifications, infinite lifetime
   BACNET_SUBSCRIBE_COV_DATA COVData;
   memset(&COVData, 0, sizeof(BACNET_SUBSCRIBE_COV_DATA));
@@ -362,7 +374,7 @@ void CBacnetClientController::sendUnconfirmedCOVSubscribe(CBacnetUnconfirmedCOVH
   // get next free invoke id, save it to handle's subsription data struct
   paHandle->m_stSubscriptionData.nSubscriptionInvokeID = this->m_nInvokeID++;
   // encode APDU part of the packet
-  PDULen += cov_subscribe_encode_apdu(&mSendBuffer[PDULen], paHandle->m_stSubscriptionData.nSubscriptionInvokeID, &COVData);
+  PDULen = (TForteUInt16)(PDULen + cov_subscribe_encode_apdu(&mSendBuffer[PDULen], paHandle->m_stSubscriptionData.nSubscriptionInvokeID, &COVData));
   mSendBuffer[BVLC_TYPE_BYTE] = BVLL_TYPE_BACNET_IP;
   mSendBuffer[BVLC_FUNCTION_BYTE] = BVLC_ORIGINAL_UNICAST_NPDU;
   encode_unsigned16(&mSendBuffer[BVLC_LEN_BYTE], PDULen);
@@ -480,7 +492,7 @@ void CBacnetClientController::encodeRequest(CBacnetServiceHandle *paHandle, TFor
   // get next invoke id
   paInvokeID = m_nInvokeID++;
   // tell handle to encode the APDU part
-  paRequestLen = paHandle->encodeServiceReq(mSendBuffer, paInvokeID, &dest, &src);
+  paRequestLen = (TForteUInt16) paHandle->encodeServiceReq(mSendBuffer, paInvokeID, &dest, &src);
 }
 
 inline void CBacnetClientController::registerTransaction(STransactionListEntry *paTransaction) {
@@ -533,14 +545,14 @@ bool CBacnetClientController::decodeAPDUData(TForteUInt16 &paAPDUOffset, TForteU
           /* Protocol version 0x01 = version used by libbacnet*/
           BACNET_NPDU_DATA NPDUData = { };
           BACNET_ADDRESS dest = { };
-          paAPDUOffset = npdu_decode(&mReceiveBuffer[NPDU_OFFSET], &dest, NULL, &NPDUData);
+          paAPDUOffset = (TForteUInt16) npdu_decode(&mReceiveBuffer[NPDU_OFFSET], &dest, NULL, &NPDUData);
           if(!NPDUData.network_layer_message && (paAPDUOffset > 0) && (paAPDUOffset <= NPDULen - BVLC_HEADER_LEN) 
               && ((dest.net == 0) || (dest.net == BACNET_BROADCAST_NETWORK))) {
                 /* NOT network layer message, APDU offset is in bounds, NOT routing infromation */
                 // not network layer message -> APDU follows -> APDUOffset+=4, adds BVLC header length
-                paAPDUOffset += BVLC_HEADER_LEN;
+                paAPDUOffset = (TForteUInt16)(paAPDUOffset+BVLC_HEADER_LEN);
                 
-                paAPDULen = NPDULen-paAPDUOffset;
+                paAPDULen = (TForteUInt16) (NPDULen-paAPDUOffset);
                 paAPDUType = (mReceiveBuffer[paAPDUOffset] & APDU_TYPE_MASK);
                 
                 if((dest.net != BACNET_BROADCAST_NETWORK) || (paAPDUType != PDU_TYPE_CONFIRMED_SERVICE_REQUEST )) {
@@ -643,7 +655,7 @@ void CBacnetClientController::handleUnconfirmedCOVNotifation(TForteUInt8 *paAPDU
   BACNET_COV_DATA COVData;
   COVData.listOfValues = propertyValue;
   // decode the APDU into the COVData variable
-  int len = cov_notify_decode_service_request(&paAPDU[UNCONFIRMED_REQ_APP_TAGS_OFFSET], paADPULen-UNCONFIRMED_REQ_APP_TAGS_OFFSET, &COVData);
+  cov_notify_decode_service_request(&paAPDU[UNCONFIRMED_REQ_APP_TAGS_OFFSET], paADPULen-UNCONFIRMED_REQ_APP_TAGS_OFFSET, &COVData); // TODO: check if something was actually decoded
   // find corresponding handle in the cov handles list
   TCOVHandlesList::Iterator itEnd = mCOVHandles->end();
   for(TCOVHandlesList::Iterator it = mCOVHandles->begin(); it != itEnd; ++it){

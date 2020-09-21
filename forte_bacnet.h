@@ -1,3 +1,14 @@
+/*******************************************************************************
+ * Copyright (c) 2020 Alexander Tepaev github.com/alexandertepaev
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Alexander Tepaev
+ *******************************************************************************/
 #ifndef BACNET_H
 #define BACNET_H
 
@@ -16,7 +27,8 @@
 #define SIMPLE_ACK_INVOKE_ID_OFFSET 1
 #define UNCONFIRMED_REQ_SERVICE_CHOICE_OFFSET 1
 #define SIMPLE_ACK_SERVICE_CHOICE_OFFSET 2
-#define COMPLEX_ACK_NPDU_SEGMENTED_MASK (0x00 || (1<<3))
+// #define COMPLEX_ACK_NPDU_SEGMENTED_MASK (0x00 || 0b00001000(1<<3))
+#define COMPLEX_ACK_NPDU_SEGMENTED_MASK (0x00 || 0b00001000)
 #define COMPLEX_ACK_SERVICE_CHOICE_OFFSET 2
 #define COMPLEX_ACK_APP_TAGS_OFFSET 3
 #define SIMPLE_COMPLEX_ACK_INVOKE_ID_OFFSET 1

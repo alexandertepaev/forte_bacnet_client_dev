@@ -8,7 +8,7 @@
  *
  * Contributors:
  *   Alois Zoitl, Waldemar Eisenmenger, Monika Wenger - initial API and implementation and/or initial documentation
- *   Alexander Tepaev - Adopted for the BACnet client integration
+ *   Alexander Tepaev - Adapted for the BACnet client integration
  *******************************************************************************/
 #include "BacnetIX.h"
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP

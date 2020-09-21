@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017 - 2020 fortiss GmbH
+ * Copyright (c) 2020 Alexander Tepaev github.com/alexandertepaev
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0.
@@ -7,9 +7,8 @@
  * SPDX-License-Identifier: EPL-2.0
  *
  * Contributors:
- *   Alexander Tepaev - initial implementation and documentation
+ *   Alexander Tepaev
  *******************************************************************************/
-
 #ifndef _BACNET_CLIENT_CONTROLLER_H_
 #define _BACNET_CLIENT_CONTROLLER_H_
 
@@ -69,7 +68,7 @@ public:
       int mServiceType;
       CIEC_ANY::EDataTypeID mIECDataType;
 
-      HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paServiceType, CIEC_ANY::EDataTypeID paIECDataType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceController::HandleDescriptor(paId, paDirection), mServiceType(paServiceType), mIECDataType(paIECDataType), mServiceConfigFB(paServiceConfigFB) {
+      HandleDescriptor(CIEC_WSTRING const &paId, forte::core::io::IOMapper::Direction paDirection, int paServiceType, CIEC_ANY::EDataTypeID paIECDataType, CBacnetServiceConfigFB *paServiceConfigFB) : forte::core::io::IODeviceController::HandleDescriptor(paId, paDirection), mServiceConfigFB(paServiceConfigFB), mServiceType(paServiceType), mIECDataType(paIECDataType) {
       }
   };
 
@@ -92,8 +91,9 @@ private:
   constexpr static TForteUInt8 scm_nRingBufferSize = 64;
   //! Timeout, after which select system call unblocks execution (see receivePacket)
   constexpr static TForteUInt8 scm_nReceivePacketSelectTimeoutMillis = 100;
-  //! Timeout, after which a BACnet service request is considered to be not acknowledged/not responded to (see discoverNetworkAddresses, subscribeToCOVNotifications, executeOperationCycle) 
-  constexpr static TForteUInt8 scm_nRequestTimeout = 1000; 
+  //! Timeout in milliseconds, after which a BACnet service request is considered to be not 
+  //  acknowledged/not responded to (see discoverNetworkAddresses, subscribeToCOVNotifications, executeOperationCycle) 
+  static constexpr TForteUInt32 scm_nRequestTimeout = 1000; //FIXME: Throws 'undifined reference to ...' when declared as TForteUInt16 
   
   //! constants for timeout/deadlines calculations
   constexpr static TForteUInt16 scm_nMicrosInMillis = 1000;
