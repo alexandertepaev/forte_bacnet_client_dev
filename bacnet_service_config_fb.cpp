@@ -41,6 +41,7 @@ void CBacnetServiceConfigFB::executeEvent(int pa_nEIID){
       sendAdapterEvent(scm_nBACnetAdapterInAdpNum, BACnetAdapter::scm_nEventINITOID);
     } else {
       // forward init evenet
+      BACnetAdapterOut().ControllerID() = BACnetAdapterIn().ControllerID();
       sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, BACnetAdapter::scm_nEventINITID);
     }
 
@@ -74,7 +75,7 @@ const char *CBacnetServiceConfigFB::init() {
   if(!setConfig())
     return scm_sFBInitFailed;
   // initialize new handle
-  CBacnetClientController *clientController = static_cast<CBacnetClientController *>(CBacnetClientConfigFB::getClientConfigFB()->getDeviceController());
+  CBacnetClientController *clientController = CBacnetClientConfigFB::getClientController(BACnetAdapterIn().ControllerID());
   if(!initHandle(clientController))
     return scm_sHandleInitFailed;
   // set executor for external events

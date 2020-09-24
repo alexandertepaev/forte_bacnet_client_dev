@@ -23,6 +23,9 @@
 #include <core/io/configFB/io_configFB_controller.h>
 //#include "bacnet_client_controller.h"
 
+class CBacnetClientController;
+typedef CSinglyLinkedList<CBacnetClientController *> TControllerList;
+
 /*! @brief BACnet client configuration fb
  *
  * BACnet client configuration FB class, which represents a FB standing in the head of the client configuration daisy-chain.
@@ -36,16 +39,18 @@ public:
   CBacnetClientConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes);
   ~CBacnetClientConfigFB();
 
-  /*! @brief Returns client config fb instance
+  /*! @brief Returns a pointer to client controller
+   *
+   * This method returns a pointer to client controller instance.
+   * Used by SCFBs. 
    * 
-   * This static method is used for accessing the client configuration fb instance (see mBacnetClientConfigFB)
-   * //TODO see mBacnetClientConfigFB comment / Do we actually need the client config fb?
-   * 
+   * @param paControllerID Numeric value indicating ID of the Client Controller
+   * @return Pointer to client controller instance
    */
-  static CBacnetClientConfigFB* getClientConfigFB();
-
+  static CBacnetClientController* getClientController(TForteUInt16 paControllerID);
+  
 protected:
-  /*! @brief Creates a BACnet client controller 
+  /*! @brief Creates a BACnet client controller and pushes it to the list of controller instances
    *
    * 
    * @param paDeviceExecution Reference to the instance responsible for handling IEC 61499 FB execution requests
@@ -70,6 +75,13 @@ protected:
   void onStartup();
 
 private:
+
+  static TForteUInt16 sm_nControllerCounter; //! Static member for counting Client Controller instances, 
+  
+  static TControllerList smControllerInstances; //! Static list holding Server Controller instances
+
+
+
   static const CStringDictionary::TStringId scm_anDataInputNames[];
   static const CStringDictionary::TStringId scm_anDataInputTypeIds[];
   
@@ -119,10 +131,6 @@ private:
    * @param pa_nEIID ID of the triggered input event
    */
   void executeEvent(int pa_nEIID);
-
-  //! Pointer to the client configuration FB instance.
-  // TODO - this only allows one Client Config FB per application; Solution - create a list of client config fb's instances (see getMasterById) TODO NEEDED?
-  static CBacnetClientConfigFB *mBacnetClientConfigFB; 
   
 };
 

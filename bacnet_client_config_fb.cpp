@@ -14,15 +14,17 @@
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "bacnet_client_config_fb_gen.cpp"
 #endif
-#include "bacnet_client_controller.h"
 
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "BACnetClient_gen.cpp"
 #endif
 
+#include "bacnet_client_controller.h"
+
 DEFINE_FIRMWARE_FB(CBacnetClientConfigFB, g_nStringIdBACnetClient)
 
-CBacnetClientConfigFB *CBacnetClientConfigFB::mBacnetClientConfigFB = NULL;
+TForteUInt16 CBacnetClientConfigFB::sm_nControllerCounter = 0;
+TControllerList CBacnetClientConfigFB::smControllerInstances;
 
 const CStringDictionary::TStringId CBacnetClientConfigFB::scm_anDataInputNames[] = {g_nStringIdQI, g_nStringIdPort};
 
@@ -73,7 +75,21 @@ void CBacnetClientConfigFB::executeEvent(int pa_nEIID){
 }
 
 inline forte::core::io::IODeviceController* CBacnetClientConfigFB::createDeviceController(CDeviceExecution& paDeviceExecution){
-  return new CBacnetClientController(paDeviceExecution);
+  CBacnetClientController *controller = new CBacnetClientController(paDeviceExecution, sm_nControllerCounter++);
+  smControllerInstances.pushBack(controller);
+  return controller;
+}
+
+CBacnetClientController* CBacnetClientConfigFB::getClientController(TForteUInt16 paControllerID) {
+  DEVLOG_DEBUG("LOOKING_FOR_ID=%d\n", paControllerID);
+  TControllerList::Iterator itEnd = smControllerInstances.end();
+  for(TControllerList::Iterator it = smControllerInstances.begin(); it != itEnd; ++it) {
+    if(paControllerID == (*it)->getControllerID()) {
+      DEVLOG_DEBUG("FOUND_ID=%d\n", (*it)->getControllerID());
+      return *it;
+    }
+  }
+  return NULL;
 }
 
 void CBacnetClientConfigFB::setConfig(){
@@ -85,10 +101,9 @@ void CBacnetClientConfigFB::setConfig(){
 
 void CBacnetClientConfigFB::onStartup(){
 
-  CBacnetClientConfigFB::mBacnetClientConfigFB = this;
-
   if(BACnetAdapterOut().getPeer() != 0) {
-    // pass the BACnetAdapterOut.INIT event to the next configuration FB 
+    // pass the BACnetAdapterOut.INIT event to the next configuration FB
+    BACnetAdapterOut().ControllerID() = static_cast<CBacnetClientController *>(getDeviceController())->getControllerID();
     sendAdapterEvent(scm_nBACnetAdapterOutAdpNum, BACnetAdapter::scm_nEventINITID);
   } else {
     // in case there is no other configuration FBs in the daisy-chain, change client controller's state to address discovery
@@ -97,8 +112,3 @@ void CBacnetClientConfigFB::onStartup(){
     IOConfigFBController::onStartup();
   }
 }
-
-CBacnetClientConfigFB* CBacnetClientConfigFB::getClientConfigFB() {
-  return CBacnetClientConfigFB::mBacnetClientConfigFB;
-}
-

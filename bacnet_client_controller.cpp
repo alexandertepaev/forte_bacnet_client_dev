@@ -18,7 +18,7 @@
 #include "bacnet_subucov_service_config_fb.h"
 
 
-CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution) : forte::core::io::IODeviceController(paDeviceExecution), m_enClientControllerState(Init), mCommunicationSocket(0), m_nInvokeID(0)
+CBacnetClientController::CBacnetClientController(CDeviceExecution& paDeviceExecution, TForteUInt16 paControllerID) : forte::core::io::IODeviceController(paDeviceExecution), m_nID(paControllerID), m_enClientControllerState(Init), mCommunicationSocket(0), m_nInvokeID(0)
 {
   // Zero the configuration struct
   m_stConfig = { };
@@ -84,6 +84,7 @@ void CBacnetClientController::setNetworkAddresses() {
 
 
 const char* CBacnetClientController::init() {
+  DEVLOG_DEBUG("[CBacnetClientController] init(): Controller ID: %d\n", m_nID);
   // open socket
   if(!(initCommunicationSocket())){
     return scmSocketInitFailed;

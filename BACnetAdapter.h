@@ -17,38 +17,40 @@
 
 class BACnetAdapter: public CAdapter{
   DECLARE_ADAPTER_TYPE(BACnetAdapter)
-
-private:
- public:
-  static const TEventID scm_nEventINITOID = 0;
-  int INITO() {
-    return m_nParentAdapterListEventID + scm_nEventINITOID;
-  }
- private:
-  static const TForteInt16 scm_anEIWithIndexes[];
-  static const CStringDictionary::TStringId scm_anEventInputNames[];
-
- public:
-  static const TEventID scm_nEventINITID = 0;
-  int INIT() {
-    return m_nParentAdapterListEventID + scm_nEventINITID;
-  }
- private:
-  static const TForteInt16 scm_anEOWithIndexes[];
-  static const CStringDictionary::TStringId scm_anEventOutputNames[];
-
-  static const SFBInterfaceSpec scm_stFBInterfaceSpecSocket;
-
-  static const SFBInterfaceSpec scm_stFBInterfaceSpecPlug;
-
-   FORTE_ADAPTER_DATA_ARRAY(1, 1, 0, 0, 0);
-
 public:
   ADAPTER_CTOR(BACnetAdapter){
   };
 
   virtual ~BACnetAdapter(){};
 
+  CIEC_UINT &ControllerID() {
+    return *static_cast<CIEC_UINT*>((isSocket()) ? getDO(1) : getDI(1));
+  }
+
+  static const TEventID scm_nEventINITOID = 0;
+  int INITO() {
+    return m_nParentAdapterListEventID + scm_nEventINITOID;
+  }
+
+  static const TEventID scm_nEventINITID = 0;
+  int INIT() {
+    return m_nParentAdapterListEventID + scm_nEventINITID;
+  }
+private:
+  static const CStringDictionary::TStringId scm_anDataOutputNames[];
+  static const CStringDictionary::TStringId scm_anDataOutputTypeIds[];
+
+  static const TForteInt16 scm_anEIWithIndexes[];
+  static const CStringDictionary::TStringId scm_anEventInputNames[];
+  static const TForteInt16 scm_anEOWithIndexes[];
+  static const TDataIOID scm_anEOWith[];
+  static const CStringDictionary::TStringId scm_anEventOutputNames[];
+
+  static const SFBInterfaceSpec scm_stFBInterfaceSpecSocket;
+
+  static const SFBInterfaceSpec scm_stFBInterfaceSpecPlug;
+
+  FORTE_ADAPTER_DATA_ARRAY(1, 1, 0, 1, 0);
 };
 
 #endif //close the ifdef sequence from the beginning of the file

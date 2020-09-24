@@ -53,7 +53,7 @@ class CBacnetClientController: public forte::core::io::IODeviceController {
   friend class CBacnetWritePropertyConfigFB;
   friend class CBacnetSubscribeUnconfirmedCOVConfigFB;
 public:
-  CBacnetClientController(CDeviceExecution& paDeviceExecution);
+  CBacnetClientController(CDeviceExecution& paDeviceExecution, TForteUInt16 paControllerID);
   ~CBacnetClientController();
 
 
@@ -81,6 +81,12 @@ public:
    */
   bool pushToRingBuffer(CBacnetServiceHandle *paHandle);
 
+
+  //! Returns ID on the client controller instance
+  TForteUInt16 getControllerID() {
+    return m_nID;
+  }
+  
 protected:
 
 private:
@@ -102,6 +108,9 @@ private:
 
   //!< Socket initialization failed message
   constexpr static const char* const scmSocketInitFailed = "Communication socket initialization failed";; 
+
+  //! Unique ID of the client controller instance
+  TForteUInt16 m_nID;
 
   //! States of the client controller
   enum EBacnetClientControllerState {
