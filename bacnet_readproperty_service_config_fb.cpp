@@ -14,10 +14,8 @@
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "bacnet_readproperty_service_config_fb_gen.cpp"
 #endif
+
 #include "bacnet_client_controller.h"
-#ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
-#include "BACnetReadProperty_gen.cpp"
-#endif
 
 DEFINE_FIRMWARE_FB(CBacnetReadPropertyConfigFB, g_nStringIdBACnetReadProperty)
 

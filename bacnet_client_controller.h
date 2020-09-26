@@ -99,7 +99,7 @@ private:
   constexpr static TForteUInt8 scm_nReceivePacketSelectTimeoutMillis = 100;
   //! Timeout in milliseconds, after which a BACnet service request is considered to be not 
   //  acknowledged/not responded to (see discoverNetworkAddresses, subscribeToCOVNotifications, executeOperationCycle) 
-  static constexpr TForteUInt32 scm_nRequestTimeout = 1000; //FIXME: Throws 'undifined reference to ...' when declared as TForteUInt16 
+  static constexpr TForteUInt32 scm_nRequestTimeout = 1; //FIXME: Throws 'undifined reference to ...' when declared as TForteUInt16 
   
   //! constants for timeout/deadlines calculations
   constexpr static TForteUInt16 scm_nMicrosInMillis = 1000;

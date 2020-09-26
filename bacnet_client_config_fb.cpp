@@ -15,10 +15,6 @@
 #include "bacnet_client_config_fb_gen.cpp"
 #endif
 
-#ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
-#include "BACnetClient_gen.cpp"
-#endif
-
 #include "bacnet_client_controller.h"
 
 DEFINE_FIRMWARE_FB(CBacnetClientConfigFB, g_nStringIdBACnetClient)
@@ -81,11 +77,9 @@ inline forte::core::io::IODeviceController* CBacnetClientConfigFB::createDeviceC
 }
 
 CBacnetClientController* CBacnetClientConfigFB::getClientController(TForteUInt16 paControllerID) {
-  DEVLOG_DEBUG("LOOKING_FOR_ID=%d\n", paControllerID);
   TControllerList::Iterator itEnd = smControllerInstances.end();
   for(TControllerList::Iterator it = smControllerInstances.begin(); it != itEnd; ++it) {
     if(paControllerID == (*it)->getControllerID()) {
-      DEVLOG_DEBUG("FOUND_ID=%d\n", (*it)->getControllerID());
       return *it;
     }
   }

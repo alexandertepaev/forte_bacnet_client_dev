@@ -258,7 +258,7 @@ void CBacnetClientController::discoverNetworkAddresses() {
     timespec currentTime;
     clock_gettime(CLOCK_MONOTONIC, &currentTime);
     // wait until we receive an I-Am message (mAddr struct of the entry is not zero) or until a timeout (1s) occurs
-    while((*it)->stAddr.s_addr == 0  && !timeoutMillis(scm_nRequestTimeout, currentTime)){
+    while((*it)->stAddr.s_addr == 0  && !timeoutMillis(scm_nRequestTimeout * scm_nMicrosInMillis, currentTime)){
       receiveIAm((*it)->nDeviceID);
     }
   }
@@ -345,7 +345,7 @@ void CBacnetClientController::subscribeToCOVNotifications() {
         timespec current_time;
         clock_gettime(CLOCK_MONOTONIC, &current_time);
         // wait until subscription is acknowledged (bAcknowledgedFlag of the handle's subscription data is set) or a timeout occurs (1s)
-        while(!covHandle->m_stSubscriptionData.bAcknowledgedFlag && !timeoutMillis(scm_nRequestTimeout, current_time)) {
+        while(!covHandle->m_stSubscriptionData.bAcknowledgedFlag && !timeoutMillis(scm_nRequestTimeout * scm_nMicrosInMillis, current_time)) {
           receiveCOVSubscriptionAck(covHandle);
         }
       }
@@ -378,7 +378,7 @@ void CBacnetClientController::sendUnconfirmedCOVSubscribe(CBacnetUnconfirmedCOVH
   // get next free invoke id, save it to handle's subsription data struct
   paHandle->m_stSubscriptionData.nSubscriptionInvokeID = this->m_nInvokeID++;
   // encode APDU part of the packet
-  PDULen = (TForteUInt16)(PDULen + cov_subscribe_encode_apdu(&mSendBuffer[PDULen], paHandle->m_stSubscriptionData.nSubscriptionInvokeID, &COVData));
+  PDULen = (TForteUInt16)(PDULen + cov_subscribe_encode_apdu(&mSendBuffer[PDULen], (unsigned int) (sizeof(mSendBuffer) - PDULen), paHandle->m_stSubscriptionData.nSubscriptionInvokeID, &COVData));
   mSendBuffer[BVLC_TYPE_BYTE] = BVLL_TYPE_BACNET_IP;
   mSendBuffer[BVLC_FUNCTION_BYTE] = BVLC_ORIGINAL_UNICAST_NPDU;
   encode_unsigned16(&mSendBuffer[BVLC_LEN_BYTE], PDULen);
@@ -465,7 +465,7 @@ void CBacnetClientController::executeOperationCycle() {
       encodeRequest(handle, invokeID, len, destinationAddr, destinationPort);
       // send it over the network
       if(sendPacket(len, destinationAddr, destinationPort) > 0) {
-        // if sent succeeded, register new transaction with 3s deadline
+        // if sent succeeded, register new transaction with 1s deadline
         timespec deadline;
         clock_gettime(CLOCK_MONOTONIC, &deadline);
         deadline.tv_sec += scm_nRequestTimeout;

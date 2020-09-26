@@ -14,10 +14,9 @@
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "bacnet_writeproperty_service_config_fb_gen.cpp"
 #endif
+
 #include "bacnet_client_controller.h"
-#ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
-#include "BACnetWriteProperty_gen.cpp"
-#endif
+
 
 DEFINE_FIRMWARE_FB(CBacnetWritePropertyConfigFB, g_nStringIdBACnetWriteProperty)
 

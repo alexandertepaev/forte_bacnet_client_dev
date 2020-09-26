@@ -15,13 +15,9 @@
 #ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
 #include "bacnet_subucov_service_config_fb_gen.cpp"
 #endif
+
 #include "bacnet_client_controller.h"
-#ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
-#include "bacnet_subucov_service_config_fb.h"
-#ifdef FORTE_ENABLE_GENERATED_SOURCE_CPP
-#include "bacnet_subucov_service_config_fb_gen.cpp"
-#endif
-#endif
+
 
 DEFINE_FIRMWARE_FB(CBacnetSubscribeUnconfirmedCOVConfigFB, g_nStringIdBACnetSubscribeUnconfirmedCOV)
 CBacnetSubscribeUnconfirmedCOVConfigFB::CBacnetSubscribeUnconfirmedCOVConfigFB(const CStringDictionary::TStringId pa_nInstanceNameId, CResource *pa_poSrcRes) : \
